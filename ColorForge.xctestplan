@@ -1,0 +1,22 @@
+{
+  "configurations" : [
+    {
+      "id" : "C0294971-560F-4F9D-A930-83EB80796665",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:ColorForge.xcodeproj",
+      "identifier" : "987BF2482DDDECC7005EF497",
+      "name" : "ColorForge"
+    }
+  },
+  "testTargets" : [
+
+  ],
+  "version" : 1
+}
