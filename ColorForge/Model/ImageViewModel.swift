@@ -12,42 +12,25 @@ import AppKit
 class ImageViewModel: ObservableObject {
     static let shared = ImageViewModel()
 
-	public var currentImgID: UUID?
+    var currentImgID: UUID?
 	
 	
 	// MARK: - RadialGradient View Properties
 	@Published var radialUiStart: CGPoint = .zero
 	@Published var radialUiEnd: CGPoint = .zero
-	@Published var radialUiRadius0: CGFloat = 0
-	@Published var radialUiRadius1: CGFloat = 0
 	@Published var radialUiWidth: CGFloat = 0
 	@Published var radialUiHeight: CGFloat = 0
     @Published var radialUiFeather: CGFloat = 50.0
     
     // Boolean to toggle if the renderer has finally initialised in the ui.
     @Published var rendererInitialisedInUI: Bool = false
-    @Published var batchProcessComplete: Bool = false
+    
     
 
 
-	func calculateRadialWidthAndHeight() {
-		 let start = radialUiStart
-		 let end = radialUiEnd
-
-		 let dx = abs(end.x - start.x)
-		 let dy = abs(end.y - start.y)
-
-		 radialUiWidth = dx * 2
-		 radialUiHeight = dy * 2
-	}
-    
     @Published var saveToggled: Bool = false
     
-    // Temporary
-    public var detinationURL: URL?
 
-	
-    @Published var debugMode: Bool = false
 	
 	@Published var processingComplete: Bool = false
 
@@ -77,36 +60,16 @@ class ImageViewModel: ObservableObject {
             }
         }
     }
-	
-	@Published var thumbnailsRendered: Bool = false
+
 	
     @Published var uiStartPoint: CGPoint = CGPoint(x: 1, y: 1)
 	@Published var uiEndPoint: CGPoint = CGPoint(x: 1, y: 1)
 	
     @Published var imageViewActive: Bool = false
     
-    @Published var imageViewUISize: CGSize = .zero
-    @Published var imageSizeUi: CGSize = .zero
+
     
-    @Published var zoomTapLocation: CGPoint? {
-        didSet {
-            if let location = zoomTapLocation {
-                print("""
-                
-                
-                Image tapped!
-                Location:          x: \(Int(location.x)), y: \(Int(location.y))
-                Current Padding:      \(padding)
-                Current Image Size:  \(imageSize) (metal / actual)
-                Current Image Size:  \(imageSizeUi) (ui)  
-                Current View Size:   \(imageViewUISize)
-                
-                
-                """)
-            }
-        }
-    }
-    
+
     @Published var drawingLinearMask: Bool = false {
         didSet {
             print("Linear Gradient Toggled")
@@ -123,40 +86,19 @@ class ImageViewModel: ObservableObject {
         }
     }
 	
-	@Published var isMaskingViewVisible: Bool = false
-    
+
     // View Size / masking variables
     public var viewSize: CGSize = .zero
     public var imageSize: CGSize = .zero
-    
-    @Published var uiScaleX: CGFloat = 0
-    @Published var uiScaleY: CGFloat = 0
-    
-    
-    public var currentUiGrainHigh: CIImage? = nil
-    public var currentUiGrainLow: CIImage? = nil
-    
-    var currentFormat: Int = 99
-
 
     
-    public var imageOrigin: CGPoint {
-        return CGPoint(
-            x: (viewSize.width - imageSize.width) / 2.0,
-            y: (viewSize.height - imageSize.height) / 2.0
-        )
-    }
-
     
     // MARK: - Masking
     
     @Published var maskingActive: Bool = false
     @Published var selectedMask: UUID? // Find the masks ID for the given image
     @Published var showMask: Bool = true
-    
-    @Published var linearMaskStart: CGPoint = .zero
-    
-    @Published var linearMaskEnd: CGPoint = .zero
+
 	
     
     // MARK: - Coordinate Conversion
@@ -164,25 +106,12 @@ class ImageViewModel: ObservableObject {
     public var currentImage: CIImage?
 	public var currentPreview: NSImage?
     
-    func convertToCoreImageCoord(_ uiPoint: CGPoint) -> CGPoint {
-        
-        let imageHeight = currentImage!.extent.height
-        let ciX = uiPoint.x
-        let ciY = imageHeight - uiPoint.y
-        return CGPoint(x: ciX, y: ciY)
-    }
-    
-    func convertFromCoreImageCoord(_ ciPoint: CGPoint) -> CGPoint {
-        let imageHeight = currentImage!.extent.height
-        let uiX = ciPoint.x
-        let uiY = imageHeight - ciPoint.y
-        return CGPoint(x: uiX, y: uiY)
-    }
+
     
     @Published var metalSize: CGSize = .zero
     
     @Published var thumbViewSize: CGSize = .zero
-    @Published var imageFrameSize: CGSize = .zero
+
     
     
     // MARK: - Zoom Functions
@@ -193,7 +122,7 @@ class ImageViewModel: ObservableObject {
     
     public var currentExtent: CGRect = .zero
     @Published var zoomRect: CGRect = .zero
-    @Published var zoomStartOrigin: CGPoint = .zero
+
     @Published var zoomScale: CGFloat = 1.0
     
     @Published var metalImageWidth: CGFloat = 0

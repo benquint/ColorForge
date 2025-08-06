@@ -36,21 +36,6 @@ struct AppDataManager {
 		try? fileManager.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
 	}
 	
-	func folder(for item: ImageItem, importDate: Date) -> URL {
-		let formatter = DateFormatter()
-		formatter.dateFormat = "yyyy-MM-dd"
-		let dateFolder = formatter.string(from: importDate)
-		return baseDirectory.appendingPathComponent(dateFolder)
-	}
-	
-	func settingsURL(for item: ImageItem, importDate: Date) -> URL {
-		let formatter = DateFormatter()
-		formatter.dateFormat = "yyyy-MM-dd"
-		let dateFolder = formatter.string(from: importDate)
-		let baseDir = baseDirectory.appendingPathComponent(dateFolder)
-		return baseDir.appendingPathComponent("settings-\(item.id.uuidString).json")
-	}
-	
 	
 	// Collapsed states
 	private var collapsedStateKey: String { "CollapsedSections" }
@@ -71,11 +56,5 @@ struct AppDataManager {
 	func isCollapsed(for key: String) -> Bool {
 		collapsedStates()[key] ?? false
 	}
-	
-    
-    func directoriesOpened() {
-        
-        
-    }
 	
 }

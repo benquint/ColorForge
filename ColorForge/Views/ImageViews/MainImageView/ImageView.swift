@@ -121,7 +121,6 @@ struct ImageView: View {
 		.onDisappear{
             viewModel.imageViewActive = true
             viewModel.drawingLinearMask = false
-			dataModel.currentId = nil
             
 //            GrainModel.shared.grain54 = nil // Need to handle this better
 		}

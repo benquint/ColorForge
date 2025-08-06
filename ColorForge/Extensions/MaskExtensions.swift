@@ -13,17 +13,6 @@ import CoreGraphics
 import SwiftUI
 
 
-extension CGPoint {
-	
-	func convertClickToImagePoint() -> CGPoint {
-		let origin = ImageViewModel.shared.imageOrigin
-		let relativeX = self.x - origin.x
-		let relativeY = self.y - origin.y
-		return CGPoint(x: relativeX, y: relativeY)
-	}
-	
-}
-
 extension CIImage {
 
 	func linearGradientExtension(_ start: CGPoint, _ end: CGPoint) -> CIImage {

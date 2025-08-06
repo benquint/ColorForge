@@ -35,9 +35,7 @@ final class ImageRegistry {
 		}
 	}
 	
-	func contains(_ url: URL) -> Bool {
-		records.contains(where: { $0.url == url })
-	}
+
 	
 	func register(url: URL, captureDate: Date, id: UUID) {
 		let record = ImportedImageRecord(url: url, captureDate: captureDate, id: id)

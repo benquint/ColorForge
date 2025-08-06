@@ -7,19 +7,7 @@
 
 import SwiftUI
 
-struct Thumbnail: Identifiable {
-	let id: UUID
-	var image: NSImage? = nil
-	var tempImage: NSImage? = nil
-	var isLoaded: Bool = false
-	
-	init(id: UUID, image: NSImage, tempImage: NSImage, isLoaded: Bool = false) {
-		self.id = id
-		self.image = image
-		self.tempImage = tempImage
-		self.isLoaded = isLoaded
-	}
-}
+
 
 struct ThumbnailView: View {
 	@EnvironmentObject var pipeline: FilterPipeline
@@ -27,7 +15,7 @@ struct ThumbnailView: View {
 	@EnvironmentObject var viewModel: ThumbnailViewModel
 	@EnvironmentObject var imgViewModel: ImageViewModel
 	
-	@State private var renderer: ThumbnailRenderer?
+
 	@State private var selectedID: UUID?
     @StateObject private var modifierTracker = ModifierTracker()
 	
@@ -278,12 +266,10 @@ struct ThumbnailView: View {
 		imgViewModel.calculateUIImageSize()
 		imgViewModel.currentImgID = id
 
-		dataModel.currentThumb = item.thumbnailImage
 		pipeline.currentURL = item.url
 		
 		imgViewModel.nativeWidth = item.nativeWidth
 		imgViewModel.nativeHeight = item.nativeHeight
-		recalculateImageFrameSize()
 
 		imgViewModel.renderingComplete = false
 		
@@ -315,7 +301,6 @@ struct ThumbnailView: View {
 		imgViewModel.calculateUIImageSize()
 		imgViewModel.currentImgID = id
 
-		dataModel.currentThumb = item.thumbnailImage
 
 		dataModel.updateItem(id: id) { item in
 			item.isExport = false
@@ -323,7 +308,7 @@ struct ThumbnailView: View {
 		
 		imgViewModel.nativeWidth = item.nativeWidth
 		imgViewModel.nativeHeight = item.nativeHeight
-		recalculateImageFrameSize()
+
 		
 		imgViewModel.renderingComplete = false
 		
@@ -333,12 +318,7 @@ struct ThumbnailView: View {
 			imageViewActive = true
 		}
 	}
-	
-	private func recalculateImageFrameSize() {
-		let width = calculateImageWidth()
-		let height = calculateImageHeight()
-		imgViewModel.imageFrameSize = CGSize(width: width, height: height)
-	}
+
 	
 	private func calculateImageWidth() -> CGFloat {
 		let width = imgViewModel.thumbViewSize.width

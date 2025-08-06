@@ -22,12 +22,6 @@ struct CollapsableSectionViewTemplate: View {
 	// Add view name
 	@State private var isCollapsed: Bool = AppDataManager.shared.isCollapsed(for: "ViewName")
 	
-	var bindings: Bindings {
-		Bindings(dataModel: dataModel, pipeline: pipeline)
-	}
-	
-	
-
 
 	var body: some View {
 		

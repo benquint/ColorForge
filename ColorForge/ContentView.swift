@@ -13,9 +13,7 @@ struct ContentView: View {
     @EnvironmentObject var dataModel: DataModel
     @EnvironmentObject var pipeline: FilterPipeline
     @EnvironmentObject var imageViewModel: ImageViewModel
-    @EnvironmentObject var sidebarViewModel: SidebarViewModel
     @EnvironmentObject var thumbModel: ThumbnailViewModel
-    @EnvironmentObject var histogramModel: HistogramModel
     @EnvironmentObject var shortcut: ShortcutViewModel
     @Environment(\.undoManager) private var undoManager
     @State var selectedURL: URL?
@@ -231,25 +229,6 @@ struct ContentView: View {
     }
     
     // MARK: - Custom progress view
-    
-    private func getThumbnailViewSize() -> CGSize {
-        var windowSize: CGSize = .zero
-        if let window = NSApplication.shared.windows.first {
-            windowSize = window.frame.size
-            print("Window size: \(windowSize.width) x \(windowSize.height)")
-        }
-        
-        let sideBarWidth = imageViewModel.sideBarWidth
-        let topBarHeight = imageViewModel.topBarHeight
-        let bottomBarHeight = imageViewModel.bottomBarHeight
-        
-        let viewWidth = windowSize.width - sideBarWidth
-        let viewHeight = windowSize.height - topBarHeight - bottomBarHeight
-        
-        let thumbnailViewSize = CGSize(width: viewWidth, height: viewHeight)
-        
-        return thumbnailViewSize
-    }
     
     private func openImages() {
         dataModel.loading = true

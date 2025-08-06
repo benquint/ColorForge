@@ -26,7 +26,6 @@ class RenderingManager {
 	
 	var renderer: Renderer?
 	
-	var thumbnailRenderer: ThumbnailRenderer? = nil
 	
 	let thumbnailContext: CIContext
 	let mainImageContext: CIContext

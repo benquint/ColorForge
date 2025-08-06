@@ -11,12 +11,7 @@ import CoreGraphics
 import AppKit
 
 class DataModel: ObservableObject {
-	static let shared = DataModel(pipeline: .shared)
-	
-	
-	@Published var currentId: UUID?
-    @Published var currentThumb: NSImage?
-    @Published var currentPreview: NSImage?
+
 	
 	@Published var items: [ImageItem] = []
 
@@ -73,19 +68,16 @@ class DataModel: ObservableObject {
     
 
 	
-	var selectedUrl: URL? {
-		pipeline.currentURL
-	}
 	
 	// Bindings
+    public var bindingCache: [String: Any] = [:]
+    public var cachedBindingId: UUID?
 	var itemIndexMap: [UUID: Int] {
 		Dictionary(uniqueKeysWithValues: items.enumerated().map { ($1.id, $0) })
 	}
 	
-	public var bindingCache: [String: Any] = [:]
-	public var cachedBindingId: UUID?
+
 	
-	@Published var processingComplete: Bool = false
     
     // MARK: - Load Images
     func loadImagesV2(from urls: [URL]) async {
@@ -122,10 +114,7 @@ class DataModel: ObservableObject {
                     }
                 }
                 
-                await MainActor.run {
-                    ImageViewModel.shared.batchProcessComplete = true
-                }
-                
+
                 await debayerHRBatchInit(for: newItems)
                 
             } catch {
@@ -167,35 +156,6 @@ class DataModel: ObservableObject {
 
 
 	
-	// MARK: - Extract thumbnails
-	func extractThumbs(for items: [ImageItem]) async {
-		for item in items {
-			let id = item.id
-			let url = item.url
-
-			let options: [CFString: Any] = [
-				kCGImageSourceCreateThumbnailWithTransform: true,
-				kCGImageSourceThumbnailMaxPixelSize: 500,
-				kCGImageSourceShouldCache: false,
-				kCGImageSourceShouldCacheImmediately: false
-			]
-
-			guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-				  let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
-				print("❌ Failed to extract thumbnail for \(url)")
-				continue
-			}
-
-			let previewImage = NSImage(cgImage: cgImage, size: .zero)
-
-			await MainActor.run {
-				self.updateItem(id: id) { item in
-					item.thumbnailImage = previewImage
-//					item.thumbLoaded = true
-				}
-			}
-		}
-	}
 
 	// MARK: - ProcessRaws
     
@@ -254,52 +214,6 @@ class DataModel: ObservableObject {
     }
     
     
-    func updateThumbAndCache(for items: [ImageItem]) async {
-        let context = RenderingManager.shared.thumbnailContext
-        let thumbScale: CGFloat = 0.3
-
-        for item in items {
-            let id = item.id
-            let url = item.url
-            guard let processed = item.processImage else { continue }
-			
-			print("\n\nUpdateThumbAndCache:\nProcessImage Extent: \(processed.extent)\n\n")
-
-            // Full-size preview rendering
-            guard let previewCgImage = context.createCGImage(processed, from: processed.extent) else {
-                continue
-            }
-
-            let fullSize = processed.extent.size
-            let previewImage = NSImage(cgImage: previewCgImage, size: fullSize)
-
-            // Downscale the already-rendered previewImage to make the thumbnail
-            let thumbSize = NSSize(width: fullSize.width * thumbScale, height: fullSize.height * thumbScale)
-            let processedThumb = NSImage(size: thumbSize)
-            processedThumb.lockFocus()
-            previewImage.draw(in: NSRect(origin: .zero, size: thumbSize),
-                              from: NSRect(origin: .zero, size: fullSize),
-                              operation: .copy,
-                              fraction: 1.0)
-            processedThumb.unlockFocus()
-
-            // Cache CIImage version
-            let cachedResult = processed.insertingIntermediate(cache: true)
-
-            await MainActor.run {
-                self.updateItem(id: id) { item in
-                    item.thumbnailImage = processedThumb
-                    item.previewImage = previewImage
-//                    item.processImage = cachedResult
-                }
-            }
-        }
-		
-		await MainActor.run {
-			ImageViewModel.shared.processingComplete = true
-			print("processingComplete marked true")
-		}
-    }
 	
 	func updateThumbAndCacheForItem(for item: ImageItem) async {
 		let context = RenderingManager.shared.thumbnailContext
@@ -406,54 +320,7 @@ class DataModel: ObservableObject {
         }
     }
     
-    private lazy var rawProcessingQueue = RawProcessingQueue(dataModel: self)
-    
-    func throttledProcessRawsV2(for item: ImageItem) async -> CGImage? {
-        await rawProcessingQueue.enqueue(item)
-    }
-	
-    actor RawProcessingQueue {
-        private var queue: [(item: ImageItem, continuation: CheckedContinuation<CGImage?, Never>)] = []
-        private var isProcessing = false
-        private unowned let dataModel: DataModel
-        
-        init(dataModel: DataModel) {
-            self.dataModel = dataModel
-        }
-        
-        func enqueue(_ item: ImageItem) async -> CGImage? {
-            return await withCheckedContinuation { continuation in
-                queue.append((item, continuation))
-                processNextIfNeeded()
-            }
-        }
-        
-        private func processNextIfNeeded() {
-            guard !isProcessing, !queue.isEmpty else { return }
-            isProcessing = true
-            
-            let (item, continuation) = queue.removeFirst()
-            
-            Task {
-                let start = Date()
-                let result = await dataModel.processRawsV2(for: item)
-                let duration = Date().timeIntervalSince(start)
 
-                print("⏱️ processRawsV2 took \(String(format: "%.3f", duration)) seconds for \(item.url.lastPathComponent)")
-                
-                continuation.resume(returning: result)
-                
-                try? await Task.sleep(nanoseconds: 150_000_000)
-                
-                self.finishAndContinue()
-            }
-        }
-        
-        private func finishAndContinue() {
-            isProcessing = false
-            processNextIfNeeded()
-        }
-    }
     
     
     func debayerInit(for items: [ImageItem]) async {
@@ -546,127 +413,7 @@ class DataModel: ObservableObject {
             }
         }
     }
-    
-//    func debayerInit(for items: [ImageItem]) async {
-//        // Split items evenly into 4 groups
-//        let groupedItems = items.enumerated().reduce(into: Array(repeating: [ImageItem](), count: 7)) { result, pair in
-//            let (index, item) = pair
-//            result[index % 7].append(item)
-//        }
-//        
-//        let maxCores = ProcessInfo.processInfo.processorCount
-//        let numContexts = max(1, min(maxCores - 1, items.count))  // Never go above processorCount - 1
-//        
-//        // Now create the contexts
-//        
-//        // Main display context
-//        let options: [CIContextOption: Any] = [
-//            .workingColorSpace: NSNull(),
-//            .outputColorSpace: NSNull(),
-//            .name: "cacheContext",
-//            .outputPremultiplied: false,
-//            .useSoftwareRenderer: false,
-//            .workingFormat: NSNumber(value: CIFormat.RGBAf.rawValue),
-//            .allowLowPower: false, // Use high-performance mode
-//            .highQualityDownsample: false, // Enable high-quality downsampling
-//            .priorityRequestLow: false, // Push to background
-//            .cacheIntermediates: false, // Cache intermediate results for performance
-//            .memoryTarget: 4_294_967_296 // 4gb
-//        ]
-//        
-//        
-//        
-//        print("Number of contexts to use: \(numContexts)")
-//
-//        await withTaskGroup(of: Void.self) { group in
-//            for (index, groupItems) in groupedItems.enumerated() {
-//                group.addTask {
-//                    let context: CIContext
-//                    switch index {
-//                    case 0: context = BatchRenderer.shared.context1
-//                    case 1: context = BatchRenderer.shared.context2
-//                    case 2: context = BatchRenderer.shared.context3
-//                    case 3: context = BatchRenderer.shared.context4
-//                    case 4: context = BatchRenderer.shared.context5
-//                    case 5: context = BatchRenderer.shared.context6
-//                    case 6: context = BatchRenderer.shared.context7
-////                    case 7: context = BatchRenderer.shared.context8
-//                    default: return
-//                    }
-//
-//                    for item in groupItems {
-//                        let id = item.id
-//                        let url = item.url
-//
-//                        // 1. Debayer
-//                        let debayerNode = DebayerNode(rawFileURL: url, scale: item.uiScale)
-//                        let (debayered, xySIMD, baseline) = debayerNode.apply()
-//
-//                        // 2. Temp/tint from xy
-//                        guard let (temp, tint) = debayered.calculateTempAndTintFromXY(xySIMD.x, xySIMD.y) else {
-//                            continue
-//                        }
-//                        
-//                        print("Using context \(index) for item \(item.url.lastPathComponent)")
-//
-//                        // 3. Convert to buffer using assigned context
-//                        guard let buffer = await debayered.convertDebayeredToBuffer(context) else {
-//                            continue
-//                        }
-//
-//                        // 4. Apply to model
-//                        await MainActor.run {
-//                            self.updateItem(id: id) { item in
-//                                item.debayeredBuffer = buffer
-//                                item.debayeredInit = debayered
-//                                item.xyChromaticity = CGPoint(x: CGFloat(xySIMD.x), y: CGFloat(xySIMD.y))
-//                                item.temp = temp
-//                                item.tint = tint
-//                                item.initTemp = temp
-//                                item.initTint = tint
-//                                item.baselineExposure = baseline
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//    }
-//    
-	
-    func processRawsV2(for item: ImageItem) async -> CGImage? {
-        let id = item.id
 
-//        guard let debayered = item.debayeredInit else {return nil}
-        guard let buffer = item.debayeredBuffer else {return nil}
-        
-//        guard let buffer = await debayered.convertDebayeredToBuffer() else {return nil}
-        
-        var result = CIImage(cvPixelBuffer: buffer)
-            .P3ToAWG()
-            .Lin2LogC()
-        
-        result = ApplyAdobeCameraRawCurveNode(
-            convertToNeg: item.convertToNeg
-        ).apply(to: result)
-        
-        let finalImage = result
-
-        guard let thumb = await finalImage.convertThumbToCGImage() else {
-            return nil
-        }
-
-        await MainActor.run {
-            self.updateItem(id: id) { item in
-                item.processImage = finalImage
-                item.thumbLoaded = true
-//                item.debayeredBuffer = buffer
-            }
-        }
-        
-        return thumb
-    }
-    
     
     func processRawsV3(_ item: ImageItem, _ buffer: CVPixelBuffer, _ context: CIContext) async {
         
@@ -694,73 +441,12 @@ class DataModel: ObservableObject {
             
             self.updateItem(id: id) { item in
                 item.processImage = finalImage
-                item.thumbLoaded = true
                 item.thumbnailImage = nsImage
             }
         }
         
     }
     
-
-    
-                
-                
-//        
-//        let id = item.id
-//
-//        guard let buffer = item.debayeredBuffer else {return nil}
-//        
-//        
-//        var result = CIImage(cvPixelBuffer: buffer)
-//            .P3ToAWG()
-//            .Lin2LogC()
-//        
-//        result = ApplyAdobeCameraRawCurveNode(
-//            convertToNeg: item.convertToNeg
-//        ).apply(to: result)
-//        
-//        let finalImage = result
-//
-//        guard let thumb = await finalImage.convertThumbToCGImage() else {
-//            return nil
-//        }
-//
-//        await MainActor.run {
-//            self.updateItem(id: id) { item in
-//                item.processImage = finalImage
-//                item.thumbLoaded = true
-//            }
-//        }
-//        
-//        return thumb
-    
-    
-    
-
-
-	
-	
-	// Unwrap async
-	private func unwrapAndReturnImages( _ item: ImageItem) async -> CIImage? {
-		guard let displayImage = item.debayeredInit else { return nil }
-		guard let highRes = item.debayeredFull else { return nil }
-		
-		let viewModel = ImageViewModel.shared
-		let isZoomed = viewModel.isZoomed
-		let rect = viewModel.zoomRect
-		
-		if isZoomed, rect.width > 0, rect.height > 0, highRes.extent.contains(rect) {
-			let zoomed = highRes.cropped(to: rect)
-			let translated = zoomed.transformed(by: .init(
-				translationX: -rect.origin.x,
-				y: -rect.origin.y
-			))
-			return translated
-		} else {
-			return displayImage
-		}
-	}
-
 
 	
 }

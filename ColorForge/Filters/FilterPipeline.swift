@@ -1799,75 +1799,7 @@ class FilterPipeline: ObservableObject {
         }
     }
     
-    private func renderThumbs(_ dataModel: DataModel, _ currentImage: CIImage) {
-        let selectedIDs = ThumbnailViewModel.shared.selectedIDs
-        let idsToUpdate = selectedIDs.isEmpty
-        ? [ImageViewModel.shared.currentImgID].compactMap { $0 }
-        : selectedIDs
-        
-        // Collect thumbnails for *all* selected IDs
-        var images: [CIImage] = []
-        for id in idsToUpdate {
-            if let idx = dataModel.itemIndexMap[id],
-               let thumb = dataModel.items[idx].thumbCIImage {
-                images.append(thumb)
-            } else {
-                // If any are missing, bail until the next update (not ready yet)
-                return
-            }
-        }
-        
-        // Make sure we have a 1-to-1 match before updating
-        guard images.count == idsToUpdate.count else { return }
-        
-        if let renderer = RenderingManager.shared.thumbnailRenderer {
-            renderer.updateThumbnails(images, idsToUpdate)
-        }
-    }
-    
-    //	private func renderThumbs(_ dataModel: DataModel, _ currentImage: CIImage) {
-    //		let selectedIDs = ThumbnailViewModel.shared.selectedIDs
-    //		let idsToUpdate = selectedIDs.isEmpty
-    //			? [ImageViewModel.shared.currentImgID].compactMap { $0 }
-    //			: selectedIDs
-    //
-    //		// Gather thumbnails for each selected item
-    //		let images: [CIImage] = idsToUpdate.compactMap { id in
-    //			if let idx = dataModel.itemIndexMap[id] {
-    //				return dataModel.items[idx].thumbCIImage ?? currentImage
-    //			}
-    //			return nil
-    //		}
-    //
-    //		if let renderer = RenderingManager.shared.thumbnailRenderer {
-    //			renderer.updateThumbnails(images, idsToUpdate)
-    //		}
-    //	}
-    //
-    //	private func renderThumbs(_ dataModel: DataModel, _ currentImage: CIImage) {
-    //
-    //		guard let id = ImageViewModel.shared.currentImgID else { return }
-    //
-    //		// Update the thumbnail renderer with the collected images
-    //		if let renderer = RenderingManager.shared.thumbnailRenderer {
-    //			renderer.updateThumbnails([currentImage], [id])
-    //		}
-    //	}
-    
-    
-    //	private func renderThumbs(_ dataModel: DataModel) {
-    //		guard let id = ImageViewModel.shared.currentImgID else { return }
-    //
-    //		// Find the visible item matching the current ID
-    //		guard let item = dataModel.visibleItems.first(where: { $0.id == id }),
-    //			  let image = item.thumbCIImage else {
-    //			return
-    //		}
-    //
-    //		if let renderer = RenderingManager.shared.thumbnailRenderer {
-    //			renderer.updateThumbnails([image], ids: [id])
-    //		}
-    //	}
+
     
     public var destinationUrl: URL?
     

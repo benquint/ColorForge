@@ -15,7 +15,6 @@ struct ImageItem: Identifiable, Equatable {
     var isExport: Bool = false
     
     // MARK: - Object Data
-    var thumbLoaded: Bool = false
     
     
     var importDate: Date
@@ -692,7 +691,6 @@ struct ImageItem: Identifiable, Equatable {
         
 
 		// MARK: - Object Data
-		thumbLoaded: Bool = false,
 		importDate: Date,
 		captureDate: Date,
 		nativeWidth: Int = 0,
@@ -895,7 +893,6 @@ struct ImageItem: Identifiable, Equatable {
         self.data3 = data3
         self.data4 = data4
 		self.c1Data = c1Data
-		self.thumbLoaded = thumbLoaded
 		self.importDate = importDate
 		self.captureDate = captureDate
 		self.nativeWidth = nativeWidth

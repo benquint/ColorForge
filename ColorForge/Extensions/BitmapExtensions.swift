@@ -12,21 +12,7 @@ import CoreGraphics
 
 extension CIImage {
     
-    func convertToNSImage() async -> NSImage? {
-        // Use your shared CIContext
-        let context = RenderingManager.shared.thumbnailContext
-        
-        // Create a CGImage from the CIImage
-        guard let cgImage = context.createCGImage(self, from: self.extent) else {
-            return nil
-        }
-        
-        // Wrap it in an NSImage
-        let size = NSSize(width: cgImage.width, height: cgImage.height)
-        let nsImage = NSImage(cgImage: cgImage, size: size)
-        return nsImage
-    }
-    
+
     
     
     func convertToNSImageSync() -> NSImage? {
@@ -43,29 +29,7 @@ extension CIImage {
         let nsImage = NSImage(cgImage: cgImage, size: size)
         return nsImage
     }
-    
-    func convertToNSImageBatch(_ context: CIContext) -> NSImage? {
-        
-        // Create a CGImage from the CIImage
-        guard let cgImage = context.createCGImage(self, from: self.extent) else {
-            return nil
-        }
-        
-        // Wrap it in an NSImage
-        let size = NSSize(width: cgImage.width, height: cgImage.height)
-        let nsImage = NSImage(cgImage: cgImage, size: size)
-        return nsImage
-    }
-    
-    func convertDebayeredToCG() async -> CGImage? {
-        let context = RenderingManager.shared.mainImageContext
-        
-        // Create a CGImage from the CIImage
-        guard let cgImage = context.createCGImage(self, from: self.extent) else {
-            return nil
-        }
-        return cgImage
-    }
+
     
     func convertDebayeredToBuffer(_ context: CIContext) async -> CVPixelBuffer? {
         
@@ -129,29 +93,8 @@ extension CIImage {
 
         return buffer
     }
-    
-    func convertToCGImage() async -> CGImage? {
-        // Use your shared CIContext
-        let context = RenderingManager.shared.cacheContext
-        
-        // Create a CGImage from the CIImage
-        guard let cgImage = context.createCGImage(self, from: self.extent) else {
-            return nil
-        }
-        
-        return cgImage
-    }
-    
-    
-    func convertThumbToCGImage() async  -> CGImage? {
-        let thumbScale = 500 / max(self.extent.width, self.extent.height)
-        let thumbnail = self.transformed(by: CGAffineTransform(scaleX: thumbScale, y: thumbScale))
-        guard let cgImage = await thumbnail.convertToCGImage() else {
-            return nil
-        }
-        return cgImage
-    }
-    
+
+
     
     func convertThumbToCGImageBatch(_ context: CIContext) async  -> CGImage? {
         let thumbScale = 500 / max(self.extent.width, self.extent.height)
@@ -164,15 +107,5 @@ extension CIImage {
         return cgImage
     }
 
-    
-}
-
-extension CGImage {
-    
-    func convertCGtoNSImage() -> NSImage {
-        let size = NSSize(width: self.width, height: self.height)
-        let nsImage = NSImage(cgImage: self, size: size)
-        return nsImage
-    }
     
 }

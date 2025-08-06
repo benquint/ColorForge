@@ -203,28 +203,7 @@ struct ItemClear: View {
 	}
 	
     
-    
-    private func processItem() {
-        let uiScale = item.uiScale
-        
-        print("uiScale in Item Clear = \(uiScale)")
-        
-        
-        Task(priority: .userInitiated) {
 
-            
-            let cgImage = await self.dataModel.throttledProcessRawsV2(for: item)
-            
-            await MainActor.run {
-                let nsImage = cgImage?.convertCGtoNSImage()
-                
-                self.dataModel.updateItem(id: item.id) { item in
-                    item.thumbnailImage = nsImage
-                    
-                }
-            }
-        }
-    }
     
     private func extractThumbTemp() async -> NSImage? {
         
