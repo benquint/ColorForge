@@ -71,7 +71,7 @@ struct BoundingBoxPath: View {
 }
 
 struct SegmentationOverlay: View {
-	
+    @EnvironmentObject var samModel: SamModel
 	@Binding var segmentationImage: SAMSegmentation
 	let imageSize: CGSize
 	
@@ -80,7 +80,7 @@ struct SegmentationOverlay: View {
 	var shouldAnimate: Bool = false
 	
 	var body: some View {
-		let nsImage = NSImage(cgImage: segmentationImage.cgImage, size: imageSize)
+        let nsImage = NSImage(cgImage: segmentationImage.cgImage, size: imageSize)
         
 		Image(nsImage: nsImage)
 			.resizable()
@@ -96,6 +96,29 @@ struct SegmentationOverlay: View {
 	}
 
 }
+
+
+struct SegmentationOverlayV2: View {
+    @EnvironmentObject var samModel: SamModel
+    let imageSize: CGSize
+
+    
+    var body: some View {
+        if let cgImage = samModel.currentMaskCG {
+            
+            let nsImage = NSImage(cgImage: cgImage, size: imageSize)
+                
+                Image(nsImage: nsImage)
+                .resizable()
+                .scaledToFit()
+                .allowsHitTesting(false)
+                .frame(width: imageSize.width, height: imageSize.height)
+                .opacity(0.8)
+        }
+    }
+
+}
+
 
 struct ContentViewSam {
 	

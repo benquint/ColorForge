@@ -11,7 +11,7 @@ import CoreGraphics
 import AppKit
 
 class DataModel: ObservableObject {
-
+    static let shared = DataModel(pipeline: FilterPipeline())
 	
 	@Published var items: [ImageItem] = []
 
@@ -76,59 +76,114 @@ class DataModel: ObservableObject {
 		Dictionary(uniqueKeysWithValues: items.enumerated().map { ($1.id, $0) })
 	}
 	
-
+    func saveAllImageItemsToDisk() {
+        for item in self.items {
+            item.toDisk()
+        }
+        print("Saved all ImageItems to disk before termination.")
+    }
 	
     
     // MARK: - Load Images
     func loadImagesV2(from urls: [URL]) async {
         Task(priority: .userInitiated) {
-            
-            
             do {
-                // Step 1: Create structs
-                let newItems = try await createStructs(from: urls)
-                
-                // Step 2: Append to model
-                await MainActor.run {
-                    self.items.append(contentsOf: newItems)
+                var restoredItems: [ImageItem] = []
+                var newURLs: [URL] = []
+
+                // Step 1: Attempt to load saved items from manifest
+                for url in urls {
+                    if let saveItem = self.loadSaveItem(for: url) {
+                        var restoredItem = saveItem.toImageItem()
+
+                        // Load cached JPEG preview (as NSImage)
+                        if let cachedImage = self.loadPreviewImage(for: url) {
+                            restoredItem.thumbnailImage = cachedImage
+                            restoredItem.previewImage = cachedImage
+                        }
+
+                        restoredItems.append(restoredItem)
+                    } else {
+                        newURLs.append(url)
+                    }
                 }
-                
-                await self.getMetaData(newItems) // scaling etc
-                
-                // Step 3: Launch thumbnails and raw processing in parallel
+
+                // Step 2: Create new ImageItems for the rest
+                let newItems = try await createStructs(from: newURLs)
+
+                // Step 3: Combine everything locally
+                let allItems = restoredItems + newItems
+
+                // Step 4: Append to model
+                await MainActor.run {
+                    self.items.append(contentsOf: allItems)
+                }
+
+                // Step 5: Continue with processing
+                await self.getMetaData(allItems)
+
                 await withTaskGroup(of: Void.self) { group in
-                    
-                    group.addTask(priority: .userInitiated) {  // HIGH PRIORITY
-                        
-//                        await self.extractThumbs(for: newItems)
+                    group.addTask(priority: .userInitiated) {
                         await MainActor.run {
                             self.thumbsFullyLoaded = true
                             self.loading = false
                             ImageViewModel.shared.processingComplete = true
                         }
-                        
                     }
-                    
+
                     group.addTask(priority: .userInitiated) {
-                        await self.debayerInit(for: newItems)
+                        await self.debayerInit(for: allItems)
                     }
                 }
-                
 
-                await debayerHRBatchInit(for: newItems)
-                
+                await debayerHRBatchInit(for: allItems)
+
             } catch {
                 print("Failed to load images: \(error)")
             }
         }
     }
     
+    
+    // MARK: - Load previous
+    
+    func loadSaveItem(for imageURL: URL) -> SaveItem? {
+        let manifest = AppDataManager.shared.manifest
 
+        // Step 1: Try to find the corresponding ImageManifest
+        guard let match = manifest.images.first(where: { $0.imageURL == imageURL }) else {
+            print("No matching entry in manifest for \(imageURL.lastPathComponent)")
+            return nil
+        }
 
+        // Step 2: Try to load and decode the JSON file
+        do {
+            let data = try Data(contentsOf: match.settingsURL)
+            let decoder = JSONDecoder()
+            let saveItem = try decoder.decode(SaveItem.self, from: data)
+            print("Loaded settings from: \(match.settingsURL.lastPathComponent)")
+            return saveItem
+        } catch {
+            print("Failed to load or decode settings for \(imageURL.lastPathComponent): \(error)")
+            return nil
+        }
+    }
+    
+    func loadPreviewImage(for imageURL: URL) -> NSImage? {
+        let manifest = AppDataManager.shared.manifest
+
+        guard let match = manifest.images.first(where: { $0.imageURL == imageURL }),
+              let previewURL = match.previewURL else {
+            return nil
+        }
+
+        return NSImage(contentsOf: previewURL)
+    }
 		
 	// MARK: - Create items
 	func createStructs(from urls: [URL]) async throws -> [ImageItem] {
 		var newItems: [ImageItem] = []
+
 
 		for url in urls {
 			let id = UUID()
@@ -155,6 +210,16 @@ class DataModel: ObservableObject {
 	}
 
 
+    // MARK: - Save Items
+    
+    private func saveItems(_ items: [ImageItem]) async {
+        for item in items {
+            guard let processImage = item.processImage else { continue }
+            
+            item.toDisk(processImage)
+        }
+    }
+    
 	
 
 	// MARK: - ProcessRaws
@@ -198,19 +263,34 @@ class DataModel: ObservableObject {
     
     
     func calculateScale(width: Int, height: Int, rotation: Int) async -> Float {
-        let screenSize = NSScreen.main?.frame.size ?? CGSize(width: 1920, height: 1080)
-        let viewWidth = screenSize.width
-        let viewHeight = screenSize.height
+        let screenSize = NSScreen.main?.frame.size ?? CGSize(width: 2048, height: 2048)
+        let screenShortEdge = min(screenSize.width, screenSize.height)
         
+        let targetSize: CGFloat
         var scale: Float = 1.0
         
-        if rotation == 6 || rotation == 8 {
-            scale = Float(viewHeight) / Float(width)
+        if screenShortEdge > 2048.0 {
+            targetSize = screenShortEdge
+            
+            if rotation == 6 || rotation == 8 {
+                scale = Float(targetSize) / Float(width)
+            } else {
+                scale = Float(targetSize) / Float(height)
+            }
+            
+            return scale * 0.7
+            
         } else {
-            scale = Float(viewHeight) / Float(height)
+            targetSize = 2048.0
+            
+            if rotation == 6 || rotation == 8 {
+                scale = Float(targetSize) / Float(width)
+            } else {
+                scale = Float(targetSize) / Float(height)
+            }
+            
+            return scale
         }
-        
-        return scale * 0.7
     }
     
     
@@ -418,7 +498,7 @@ class DataModel: ObservableObject {
     func processRawsV3(_ item: ImageItem, _ buffer: CVPixelBuffer, _ context: CIContext) async {
         
         let id = item.id
-        
+        if item.thumbnailImage == nil {
         var result = CIImage(cvPixelBuffer: buffer)
             .P3ToAWG()
             .Lin2LogC()
@@ -430,21 +510,38 @@ class DataModel: ObservableObject {
         let finalImage = result
 
         
-        guard let thumb = await finalImage.convertThumbToCGImageBatch(context) else {
-            return
-        }
-        
-        await MainActor.run {
-            
-            let size = NSSize(width: thumb.width, height: thumb.height)
-            let nsImage = NSImage(cgImage: thumb, size: size)
-            
-            self.updateItem(id: id) { item in
-                item.processImage = finalImage
-                item.thumbnailImage = nsImage
+            guard let thumb = await finalImage.convertThumbToCGImageBatch(context) else {
+                return
             }
+            
+            await MainActor.run {
+                
+                let size = NSSize(width: thumb.width, height: thumb.height)
+                let nsImage = NSImage(cgImage: thumb, size: size)
+                
+                self.updateItem(id: id) { item in
+                    item.processImage = finalImage
+                    item.thumbnailImage = nsImage
+                }
+            }
+            
+            item.toDisk(finalImage)
+        } else {
+            print("Cached image found, applying pipeline")
+            guard let finalImage = FilterPipeline.shared.applyPipelineV2Sync(id, self) else {return}
+            guard let thumb = await finalImage.convertThumbToCGImageBatch(context) else {return}
+            await MainActor.run {
+                
+                let size = NSSize(width: thumb.width, height: thumb.height)
+                let nsImage = NSImage(cgImage: thumb, size: size)
+                
+                self.updateItem(id: id) { item in
+                    item.processImage = finalImage
+                    item.thumbnailImage = nsImage
+                }
+            }
+            
         }
-        
     }
     
 

@@ -47,6 +47,15 @@ extension CIImage {
         return result
     }
 	
+    func getBins() -> CIImage {
+        let filter = CIFilter.areaHistogram()
+        filter.inputImage = self
+        filter.count = 128
+        filter.scale = 50
+        filter.extent = self.extent
+        return filter.outputImage!
+    }
+
     
     // MARK: - Convert to capture one input
     

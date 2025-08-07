@@ -12,6 +12,8 @@ struct MaskInfoView: View {
     @EnvironmentObject var pipeline: FilterPipeline
     @EnvironmentObject var viewModel: ImageViewModel
     @EnvironmentObject var dataModel: DataModel
+    @EnvironmentObject var samModel: SamModel
+    
     @FocusState private var focusedField: String?
     
     @State private var radialMaskIcon = "circle.righthalf.filled"
@@ -100,11 +102,21 @@ struct MaskInfoView: View {
                 HStack {
                     Spacer()
                     
-                    Text("Add")
+                    Button(action: {
+                        samModel.addToMask.toggle()
+                    }) {
+                        Text("Add to mask")
+                    }
+                    .buttonStyle(.plain)
                     
                     Spacer()
                     
-                    Text("Subtract")
+                    Button(action: {
+                        samModel.subtractFromMask.toggle()
+                    }) {
+                        Text("Subtract from mask")
+                    }
+                    .buttonStyle(.plain)
                     
                     Spacer()
                 }
@@ -283,7 +295,7 @@ struct MaskInfoView: View {
     private func addLinearMask(named name: String) {
         guard let id = viewModel.currentImgID else { return }
         
-        let newMask = ImageItem.LinearGradientMask(
+        let newMask = LinearGradientMask(
             name: name,
             startPoint: .zero,
             endPoint: .zero

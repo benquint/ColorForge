@@ -10,7 +10,7 @@ import SwiftUI
 struct SamView: View {
     @EnvironmentObject var sam2: SAM2
     @EnvironmentObject var viewModel: ImageViewModel
-    
+    @EnvironmentObject var samModel: SamModel
     
     let viewWidth: CGFloat
     let viewHeight: CGFloat
@@ -72,12 +72,12 @@ struct SamView: View {
                     Color.clear.preference(key: SizePreferenceKey.self, value: geometry.size)
                 })
                 .onPreferenceChange(SizePreferenceKey.self) { imageSize = $0 }
-                .onChange(of: selectedPoints.count, {
-                    if !selectedPoints.isEmpty {
-                        print("Starting segmentation with \(selectedPoints.count) points")
-                        performForwardPass()
-                    }
-                })
+//                .onChange(of: selectedPoints.count, {
+//                    if !selectedPoints.isEmpty {
+//                        print("Starting segmentation with \(selectedPoints.count) points")
+//                        performForwardPass()
+//                    }
+//                })
                 .onChange(of: boundingBoxes.count, {
                     if !boundingBoxes.isEmpty {
                         print("Starting segmentation")
@@ -89,15 +89,20 @@ struct SamView: View {
                     BoundingBoxesOverlay(boundingBoxes: boundingBoxes, currentBox: currentBox, imageSize: imageSize)
                     
                     if !segmentationImages.isEmpty {
-                        ForEach(Array(segmentationImages.enumerated()), id: \.element.id) { index, segmentation in
-                            SegmentationOverlay(segmentationImage: $segmentationImages[index], imageSize: imageSize, shouldAnimate: false)
-                                .zIndex(Double (segmentationImages.count - index))
-                        }
+//                        ForEach(Array(segmentationImages.enumerated()), id: \.element.id) { index, segmentation in
+//                            SegmentationOverlay(segmentationImage: $segmentationImages[index], imageSize: imageSize, shouldAnimate: false)
+//                                .zIndex(Double (segmentationImages.count - index))
+//                        }
+                        SegmentationOverlayV2(imageSize: imageSize)
+                        
                     }
                     
                     if let currentSegmentation = currentSegmentation {
-                        SegmentationOverlay(segmentationImage: .constant(currentSegmentation), imageSize: imageSize, origin: animationPoint, shouldAnimate: true)
-                            .zIndex(Double(segmentationImages.count + 1))
+//                        SegmentationOverlay(segmentationImage: .constant(currentSegmentation), imageSize: imageSize, origin: animationPoint, shouldAnimate: true)
+//                            .zIndex(Double(segmentationImages.count + 1))
+                        
+                        SegmentationOverlayV2(imageSize: imageSize)
+                       
                     }
                 }
             
@@ -150,6 +155,9 @@ struct SamView: View {
         }
         .onChange(of: viewHeight) {
             calculateImageSize()
+        }
+        .onChange(of: segmentationImages.count) { newCount in
+            print("Segmentation image count changed: \(newCount)")
         }
         
     }
@@ -207,7 +215,8 @@ struct SamView: View {
     
     private func placePoint(at coordinates: CGPoint) {
         let samPoint = SAMPoint(coordinates: coordinates.fromSize(imageSize), category: selectedCategory!)
-        self.selectedPoints.append(samPoint)
+        self.selectedPoints = [samPoint]
+        self.performForwardPass()
     }
     
     private func performForwardPass() {
@@ -217,28 +226,30 @@ struct SamView: View {
         
         Task {
             do {
-                print("[DEBUG] Calling SAM2.getPromptEncoding...")
+                
                 try await sam2.getPromptEncoding(from: pointSequence, with: imageSize)
-                print("[DEBUG] Prompt encoding complete.")
+
                 
                 let targetSize = originalSize ?? .zero
-                print("[DEBUG] Requesting mask for size: \(targetSize)")
+                
                 
                 if let mask = try await sam2.getMask(for: targetSize) {
-                    print("[DEBUG] Mask successfully generated (extent: \(mask.extent)). Updating UI...")
+                     
                     
                     DispatchQueue.main.async {
                         let colorSet = self.segmentationImages.map { $0.tintColor }
                         let furthestColor = furthestColor(from: colorSet, among: SAMSegmentation.candidateColors)
                         let segmentationNumber = segmentationImages.count
                         
-                        print("[DEBUG] Creating new segmentation overlay #\(segmentationNumber + 1) with color: \(furthestColor)")
+    
                         
                         let segmentationOverlay = SAMSegmentation(
                             image: mask,
                             tintColor: furthestColor,
                             title: "Untitled \(segmentationNumber + 1)"
                         )
+                        
+                        samModel.addMask(segmentationOverlay)
                         self.currentSegmentation = segmentationOverlay
                     }
                 } else {

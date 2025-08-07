@@ -12,7 +12,32 @@ import CoreGraphics
 
 extension CIImage {
     
+    func saveJpeg(_ url: URL, quality: CGFloat = 0.75) {
+        let context = RenderingManager.shared.exportContext
+        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
+        
+        let targetWidth = 2048.0
+        let scalar = targetWidth / max(self.extent.width, self.extent.height)
+        let scaled = self.transformed(by: CGAffineTransform(scaleX: scalar, y: scalar))
+        
+        let quality = 0.6
 
+        let options: [CIImageRepresentationOption: Any] = [
+            kCGImageDestinationLossyCompressionQuality as CIImageRepresentationOption: quality
+        ]
+
+        do {
+            try context.writeJPEGRepresentation(
+                of: scaled,
+                to: url,
+                colorSpace: colorSpace,
+                options: options
+            )
+            print("Saved JPEG to: \(url.path) with quality \(quality)")
+        } catch {
+            print("❌ Failed to save JPEG: \(error)")
+        }
+    }
     
     
     func convertToNSImageSync() -> NSImage? {

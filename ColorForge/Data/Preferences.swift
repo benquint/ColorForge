@@ -13,10 +13,18 @@ class Preferences {
 
     static var bookmarkedDirectories: [Data] {
         get {
-            UserDefaults.standard.array(forKey: bookmarksKey) as? [Data] ?? []
+            guard let rawData = UserDefaults.standard.data(forKey: bookmarksKey),
+                  let array = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(rawData) as? [Data] else {
+                return []
+            }
+            return array
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: bookmarksKey)
+            if let data = try? NSKeyedArchiver.archivedData(withRootObject: newValue, requiringSecureCoding: false) {
+                UserDefaults.standard.set(data, forKey: bookmarksKey)
+            } else {
+                print("Failed to archive bookmark data array.")
+            }
         }
     }
 }

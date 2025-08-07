@@ -42,6 +42,15 @@ extension CIImage {
 		return result.cropped(to: self.extent)
 	}
 	
+    func reducedY() -> CIImage {
+        let kernel = CIColorKernelCache.shared.UVtoRGB
+        let result = kernel.apply(
+            extent: self.extent,
+            roiCallback: { _, rect in rect },
+            arguments: [self]
+        ) ?? self
+        return result.cropped(to: self.extent)
+    }
 	
 	// MARK: - Sampling
 

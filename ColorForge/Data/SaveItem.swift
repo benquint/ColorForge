@@ -19,15 +19,58 @@ extension ImageItem {
         SaveItem.from(self)
     }
     
-    func toDisk() {
-        let saveItem = self.toSaveItem()
+    func toDisk(_ inputImage: CIImage? = nil) {
         let appData = AppDataManager.shared
+        let settingsFolder = appData.settingsFolder
+        let imageCacheFolder = appData.imageCacheFolder
+
+        let id = self.id
+        let currentURL = self.url
+        let imageCacheURL = imageCacheFolder.appendingPathComponent("\(id.uuidString).jpeg")
+        let settingsURL = settingsFolder.appendingPathComponent("\(id.uuidString).json")
+        
+        if inputImage == nil {
+            if let processImage = self.processImage {
+                processImage.saveJpeg(imageCacheURL)
+            }
+        } else if let image = inputImage {
+            image.saveJpeg(imageCacheURL)
+        }
+
+        let saveItem = self.toSaveItem()
         appData.saveSettings(for: saveItem)
+
+        // Check if this imageURL already exists in the manifest
+        let manifest = appData.manifest
+        let alreadyExists = manifest.images.contains { $0.imageURL == currentURL }
+
+        guard !alreadyExists else {
+            // Optional: log skipped duplicate
+            print("Manifest already contains entry for \(currentURL.lastPathComponent), skipping append.")
+            return
+        }
+
+        // Append new ImageManifest entry and save
+        let newEntry = ImageManifest(
+            imageURL: currentURL,
+            settingsURL: settingsURL,
+            previewURL: imageCacheURL
+        )
+
+        appData.addImageManifestIfNeeded(newEntry)
+        print("Appended new image manifest for: \(currentURL.lastPathComponent)")
     }
+
 
 }
 
+
+
 extension SaveItem {
+    func toImageItem() -> ImageItem {
+        ImageItem.from(self)
+    }
+    
     static func from(_ imageItem: ImageItem) -> SaveItem {
         return SaveItem(
 

@@ -41,32 +41,54 @@ class AppDataManager {
     
     let baseDirectory: URL
     let registryURL: URL
+    let settingsFolder: URL
+    let imageCacheFolder: URL
+
     private(set) var manifest: Manifest
 
     // MARK: - Init
     
     private init() {
-        // Step 1: Set up base directory
+        // Step 1: Base Application Support location
         let appSupport = try! fileManager.url(for: .applicationSupportDirectory,
                                               in: .userDomainMask,
                                               appropriateFor: nil,
                                               create: true)
 
+        // Step 2: Define folder structure
         let appFolder = appSupport.appendingPathComponent("ColorForge")
         let appDataFolder = appFolder.appendingPathComponent("AppData")
-        try? fileManager.createDirectory(at: appDataFolder, withIntermediateDirectories: true)
+        let imageDataFolder = appFolder.appendingPathComponent("ImageData")
+        let settingsFolder = imageDataFolder.appendingPathComponent("Settings")
+        let imageCacheFolder = imageDataFolder.appendingPathComponent("ImageCache")
 
+        // Step 3: Create folders only if needed
+        if !fileManager.fileExists(atPath: appDataFolder.path) {
+            try? fileManager.createDirectory(at: appDataFolder, withIntermediateDirectories: true)
+        }
+
+        if !fileManager.fileExists(atPath: settingsFolder.path) {
+            try? fileManager.createDirectory(at: settingsFolder, withIntermediateDirectories: true)
+        }
+        
+        if !fileManager.fileExists(atPath: imageCacheFolder.path) {
+            try? fileManager.createDirectory(at: imageCacheFolder, withIntermediateDirectories: true)
+        }
+
+        // Step 4: Store persistent folder locations
         self.baseDirectory = appDataFolder
         self.registryURL = appDataFolder.appendingPathComponent("manifest.json")
+        self.settingsFolder = settingsFolder
+        self.imageCacheFolder = imageCacheFolder
 
-        // Step 2: Load or create manifest
+        // Step 5: Load or create manifest
         if fileManager.fileExists(atPath: registryURL.path) {
             do {
                 let data = try Data(contentsOf: registryURL)
                 let decoder = JSONDecoder()
                 self.manifest = try decoder.decode(Manifest.self, from: data)
             } catch {
-                print("Failed to load manifest. Starting fresh: \(error)")
+                print("\n\nFailed to load manifest. Starting fresh: \(error)\n\n")
                 self.manifest = Manifest(app: AppManifest(), images: [])
                 saveManifest(self.manifest)
             }
@@ -74,55 +96,7 @@ class AppDataManager {
             self.manifest = Manifest(app: AppManifest(), images: [])
             saveManifest(self.manifest)
         }
-        
-        // Step 3: Restore security-scoped directories
-        let restoredDirectories = restoreAllWorkingDirectories()
-        print("Restored \(restoredDirectories.count) security-scoped directories.")
     }
-    
-    // MARK: - Security Scoped Bookmarks
-    
-    
-    // Saves url as security scoped bookmark
-    func addBookmark(for directory: URL) {
-        do {
-            let data = try directory.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
-            var existing = Preferences.bookmarkedDirectories
-
-            // Avoid duplicates by checking against existing bookmark data (if needed)
-            if !existing.contains(data) {
-                existing.append(data)
-                Preferences.bookmarkedDirectories = existing
-            }
-        } catch {
-            print("Failed to create bookmark for directory \(directory): \(error)")
-        }
-    }
-    
-    @discardableResult
-    func restoreAllWorkingDirectories() -> [URL] {
-        var urls: [URL] = []
-
-        for bookmarkData in Preferences.bookmarkedDirectories {
-            var isStale = false
-            do {
-                let url = try URL(resolvingBookmarkData: bookmarkData,
-                                  options: [.withSecurityScope],
-                                  relativeTo: nil,
-                                  bookmarkDataIsStale: &isStale)
-                if url.startAccessingSecurityScopedResource() {
-                    urls.append(url)
-                } else {
-                    print("Failed to access security scoped resource at \(url)")
-                }
-            } catch {
-                print("Failed to resolve bookmark: \(error)")
-            }
-        }
-
-        return urls
-    }
-    
     
     
     
@@ -154,56 +128,40 @@ class AppDataManager {
         }
     }
     
+    
+    func addImageManifestIfNeeded(_ newEntry: ImageManifest) {
+        // Don't add if one with the same imageURL already exists
+        guard !manifest.images.contains(where: { $0.imageURL == newEntry.imageURL }) else {
+            print("Manifest already contains entry for \(newEntry.imageURL.lastPathComponent), skipping append.")
+            return
+        }
+
+        manifest.images.append(newEntry)
+        saveManifest(manifest)
+        print("Appended new image manifest for: \(newEntry.imageURL.lastPathComponent)")
+    }
 
    
     
     // MARK: - Save Item
-
-    /*
-     Example usage:
-     
-     let saveItem = SaveImageItem(...)  // however you generate it
-     saveSettings(for: saveItem)
-     
-     */
     
     func saveSettings(for item: SaveItem) {
+
         let fileManager = FileManager.default
-        
         let id = item.id
-        
-        
-        // Step 1: Parent folder (where the image came from)
-        let imageFolder = item.url.deletingLastPathComponent()
-        
-        // Step 2: ColorForge folder structure
-        let colorForgeFolder = imageFolder.appendingPathComponent("ColorForge")
-        let settingsFolder = colorForgeFolder.appendingPathComponent("SettingsCache")
-        let sessionFolder = colorForgeFolder.appendingPathComponent("SessionCache")
-        let imageCacheFolder = colorForgeFolder.appendingPathComponent("ImageCache")
-        
+
         do {
-            // Step 3: Ensure folders exist
-            try fileManager.createDirectory(at: settingsFolder, withIntermediateDirectories: true)
-            try fileManager.createDirectory(at: sessionFolder, withIntermediateDirectories: true)
-            try fileManager.createDirectory(at: imageCacheFolder, withIntermediateDirectories: true)
-            
-            // Step 4: Build save path
             let settingsFileURL = settingsFolder.appendingPathComponent("\(id.uuidString).json")
-            
-            // Step 5: Save the file
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             let data = try encoder.encode(item)
             try data.write(to: settingsFileURL, options: .atomic)
-            
+
             print("Saved settings to: \(settingsFileURL.path)")
         } catch {
             print("Failed to save settings: \(error)")
         }
     }
-    
-    
     
     
     

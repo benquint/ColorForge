@@ -33,10 +33,16 @@ extension CIImage {
     
     
 	func applyLinearGradientAndBlend(
-		_ start: CGPoint,
-		_ end: CGPoint,
+		_ startNorm: CGPoint,
+		_ endNorm: CGPoint,
 		_ backgroundImage: CIImage
 	) -> CIImage {
+        
+        let imgwidth = self.extent.width
+        let imgheight = self.extent.height
+        
+        let start = CGPoint(x: startNorm.x * imgwidth, y: startNorm.y * imgheight)
+        let end = CGPoint(x: endNorm.x * imgwidth, y: endNorm.y * imgheight)
 
         let mask = self.createDitheredMaskImage(start, end)
         
@@ -58,6 +64,8 @@ extension CIImage {
     
     
     func createDitheredMaskImage( _ start: CGPoint, _ end: CGPoint) -> CIImage {
+        
+        
         let white = CIImage(color: .white).cropped(to: self.extent)
         let black = CIImage(color: .black).cropped(to: self.extent)
         
@@ -90,16 +98,23 @@ extension CIImage {
     
     func applyRadialMask(
         _ baseImage: CIImage,
-        _ start: CGPoint, // center point
-        _ width: CGFloat,
-        _ height: CGFloat,
+        _ startNorm: CGPoint, // center point
+        _ widthNorm: CGFloat,
+        _ heightNorm: CGFloat,
         _ feather: Float, // 0–100
         _ invert: Bool,
         _ opacity: Float
     ) -> CIImage {
         
         
+        let imgwidth = baseImage.extent.width
+        let imgheight = baseImage.extent.height
         
+        let start = CGPoint(x: startNorm.x * imgwidth, y: startNorm.y * imgheight)
+        let width = widthNorm * imgwidth
+        let height = heightNorm * imgheight
+        
+
         let rectRadius = min(width, height) / 2.0
         let radius0 = rectRadius * (1 - CGFloat(feather / 100))
         let radius1 = rectRadius
@@ -130,7 +145,6 @@ extension CIImage {
         // Step 4: Translate to center
         mask = mask.transformed(by: .init(translationX: start.x, y: start.y))
 
-		print("DEBUG MASK: Mask extent in extension = \(mask.extent)")
 
         // Step 6: Apply opacity (affects alpha channel)
         if opacity < 100 {
@@ -193,37 +207,7 @@ extension CIImage {
         ]).cropped(to: baseImage.extent)
     }
     
-	
-//	func applyLutAndNormaliseGradient(_ lutData: Data) -> {
-//		let base = self
-//		let filterApplied = base.applyLutData(lutData)
-//		
-//		
-//		
-//		
-//	}
-    
+
 
 }
 
-
-extension FilterNodeMaskable {
-	func applyMasked(to input: CIImage) -> CIImage {
-		guard isMask,
-			  let mask = maskData as? ImageItem.LinearGradientMask else {
-			print("""
-				Masking Extension: No mask
-				""")
-			return apply(to: input)
-		}
-		
-		// Base result of the masked effect
-		let maskedEffect = apply(to: input)
-		
-		let applied = maskedEffect.applyLinearGradientAndBlend(mask.startPoint, mask.endPoint, input)
-		
-		
-		// Apply linear gradient blend
-		return applied.cropped(to: input.extent)
-	}
-}

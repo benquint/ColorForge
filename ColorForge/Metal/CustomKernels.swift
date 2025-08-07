@@ -72,6 +72,7 @@ public final class CIColorKernelCache {
 	// ColorSpace
 	let RGBtoYUV: CIColorKernel
 	let YUVtoRGB: CIColorKernel
+    let UVtoRGB: CIColorKernel
 	let gamutMap: CIColorKernel
 	let toneMapLinear: CIColorKernel
 	let adobeCRCurve: CIColorKernel
@@ -214,6 +215,7 @@ public final class CIColorKernelCache {
 		// ColorSpace
 		self.RGBtoYUV = load("RGBtoYUV")
 		self.YUVtoRGB = load("YUVtoRGB")
+        self.UVtoRGB = load("UVtoRGB")
 		self.gamutMap = load("gamutMap")
 		self.toneMapLinear = load("toneMapLinear")
 		self.adobeCRCurve = load("applyAdobeCameraRawCurveKernel")

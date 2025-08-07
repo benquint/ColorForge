@@ -98,6 +98,7 @@ class ImageViewModel: ObservableObject {
     @Published var maskingActive: Bool = false
     @Published var selectedMask: UUID? // Find the masks ID for the given image
     @Published var showMask: Bool = true
+    @Published var showMaskPoints: Bool = true
 
 	
     

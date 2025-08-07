@@ -9,6 +9,8 @@ import SwiftUI
 
 @main
 struct ColorForgeApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
 	@StateObject var pipeline = FilterPipeline()
 	@StateObject var dataModel: DataModel
 	@StateObject var sam2: SAM2 // Observable object
@@ -53,6 +55,7 @@ struct ColorForgeApp: App {
 				.environmentObject(sam2)
                 .environmentObject(HistogramModel.shared)
                 .environmentObject(ShortcutViewModel.shared)
+                .environmentObject(SamModel.shared)
                 .background(BackgroundWindowModifier())
 		}
 	}

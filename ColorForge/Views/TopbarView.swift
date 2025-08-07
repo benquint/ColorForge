@@ -658,8 +658,7 @@ struct TopbarView: View {
 		thumbModel.isInitialLoad = true
 
         let panel = NSOpenPanel()
-//        panel.allowedFileTypes = ["dng", "DNG", "arw", "ARW", "RAF", "raf", "cr2", "CR2", "cr3", "CR3"]
-        
+
         panel.allowedContentTypes = [
             UTType(filenameExtension: "dng"),
             UTType(filenameExtension: "arw"),

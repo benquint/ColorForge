@@ -109,7 +109,9 @@ struct ImageOverlayView: View {
                     
                     // MARK: - Linear Gradient
                     
-                    if viewModel.drawingLinearMask  && viewModel.maskingActive && viewModel.selectedMask != nil {
+                    if viewModel.showMaskPoints  && viewModel.maskingActive && viewModel.selectedMask == selectedMask && selectedMask != nil {
+                        
+                        
                         
                         ZStack {
                             
@@ -199,7 +201,8 @@ struct ImageOverlayView: View {
                     
                     // MARK: - Radial Gradient
                     
-                    if viewModel.drawingRadialMask && viewModel.maskingActive && viewModel.selectedMask != nil {
+                    
+                    if viewModel.showMaskPoints  && viewModel.maskingActive && viewModel.selectedMask == selectedMask && selectedMask != nil {
                         
                         ZStack {
                             
@@ -326,36 +329,105 @@ struct ImageOverlayView: View {
             .simultaneousGesture(linearMaskGesture())
             .simultaneousGesture(radialMaskGesture())
             .simultaneousGesture(zoomTap())
+        
+            .onAppear {
+                calculateCoords()
+            }
+        
             // Bindings
             .onChange(of: LinearStartPointBinding) {
+                
+               
+                
                 guard viewModel.selectedMask != nil else { return }
+                let point = deNormaliseCoord(LinearStartPointBinding)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    let ui_point = convertCoordsToUI(LinearStartPointBinding)
+                    let ui_point = convertCoordsToUI(point)
                     viewModel.uiStartPoint = ui_point
                     initialCircleStart = ui_point
                 }
             }
             .onChange(of: LinearEndPointBinding) {
+                
+                
+                
                 guard viewModel.selectedMask != nil else { return }
+                let point = deNormaliseCoord(LinearEndPointBinding)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    let ui_point = convertCoordsToUI(LinearEndPointBinding)
+                    let ui_point = convertCoordsToUI(point)
                     viewModel.uiEndPoint = ui_point
                     initialCircleEnd = ui_point
                     
                 }
             }
             .onChange(of: radialStartPointBinding) {
+                
+                
+                
                 guard viewModel.selectedMask != nil else { return }
+                let startPixelPoint = deNormaliseCoord(radialStartPointBinding)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    let ui_point = convertCoordsToUI(radialStartPointBinding)
-                    viewModel.radialUiStart = ui_point
-                    initialRadialStart = ui_point
+                    let ui_start_point = convertCoordsToUI(startPixelPoint)
+                    viewModel.radialUiStart = ui_start_point
+                    initialRadialStart = ui_start_point
+                    (viewModel.radialUiWidth, viewModel.radialUiHeight) = calculateEllipseSizeFromPoint(viewModel.radialUiStart, viewModel.radialUiEnd)
+                }
+            }
+        
+            .onChange(of: radialEndPointBinding) {
+
+                guard viewModel.selectedMask != nil else { return }
+                let endPixelPoint = deNormaliseCoord(radialEndPointBinding)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    let ui_end_point = convertCoordsToUI(endPixelPoint)
+                    viewModel.radialUiEnd = ui_end_point
+                    initialRadialEnd = ui_end_point
                     (viewModel.radialUiWidth, viewModel.radialUiHeight) = calculateEllipseSizeFromPoint(viewModel.radialUiStart, viewModel.radialUiEnd)
                 }
             }
             
         
         
+    }
+    
+    
+    // MARK: - Normalisation
+    
+    private func normaliseCoord(_ point: CGPoint) -> CGPoint{
+        
+        
+        let err = CGPoint(x: 0, y: 0)
+        
+        guard let currentImg = viewModel.currentImage else {
+            print("\nCurrent image is nil\n\n")
+            return  err}
+        
+        let width = currentImg.extent.width, height = currentImg.extent.height
+        
+        let xNorm = point.x / width
+        let yNorm = point.y / height
+        let normCoord =  CGPoint(x: xNorm, y: yNorm)
+    
+        
+        return normCoord
+    }
+
+    private func deNormaliseCoord(_ point: CGPoint) -> CGPoint{
+
+        
+        let err = CGPoint(x: 0, y: 0)
+        guard let currentImg = viewModel.currentImage else {
+            print("\nCurrent image is nil\n\n")
+            return  err}
+        let width = currentImg.extent.width, height = currentImg.extent.height
+        
+        let xNorm = point.x * width
+        let yNorm = point.y * height
+        
+        let pixelCoord = CGPoint(x: xNorm, y: yNorm)
+        
+        
+        return pixelCoord
     }
     
     
@@ -374,7 +446,9 @@ struct ImageOverlayView: View {
     private func calculateCoords() {
         
         // Unwrap the current image
-        guard let currentImg = viewModel.currentImage else { return }
+        guard let currentImg = viewModel.currentImage else {
+            print("\nCurrent image is nil\n\n")
+            return }
         
         
         // First load in the metal Width
@@ -421,6 +495,7 @@ struct ImageOverlayView: View {
      size to get the coreimage coords.
      
      */
+
 
     
     
@@ -515,14 +590,7 @@ struct ImageOverlayView: View {
         return (width, height)
     }
     
-    
-    private func updateRadialMask() {
-        let ciStart = convertCoords(viewModel.radialUiStart)
-        let ciEnd = convertCoords(viewModel.radialUiEnd)
-        $radialStartPointBinding.wrappedValue = ciStart
-        $radialEndPointBinding.wrappedValue = ciEnd
-    }
-    
+
     
     
     
@@ -745,13 +813,13 @@ struct ImageOverlayView: View {
         (viewModel.radialUiWidth, viewModel.radialUiHeight) = calculateRadialWidthAndHeightForUI(viewModel.radialUiStart, viewModel.radialUiEnd)
         let ciStart = convertCoords(viewModel.radialUiStart)
         let ciEnd = convertCoords(viewModel.radialUiEnd)
-        $radialStartPointBinding.wrappedValue = ciStart
-        $radialEndPointBinding.wrappedValue = ciEnd
+        $radialStartPointBinding.wrappedValue = normaliseCoord(ciStart)
+        $radialEndPointBinding.wrappedValue = normaliseCoord(ciEnd)
         
         let (ciWidth, ciHeight) = calculateRadialWidthAndHeightForCI(ciStart, ciEnd)
         
-        $radialWidthBinding.wrappedValue = ciWidth
-        $radialHeightBinding.wrappedValue = ciHeight
+        $radialWidthBinding.wrappedValue = normaliseWidth(ciWidth)
+        $radialHeightBinding.wrappedValue = normaliseHeight(ciHeight)
     }
     
     // Calculates radialUiEnd based on the current radial start, width, height,
@@ -782,6 +850,42 @@ struct ImageOverlayView: View {
         return result
     }
     
+    private func normaliseWidth(_ width: CGFloat) -> CGFloat{
+        guard let currentImg = viewModel.currentImage else {
+            print("\nCurrent image is nil\n\n")
+            return  0.0}
+        let imgwidth = currentImg.extent.width
+        
+        return width / imgwidth
+    }
+    
+    private func normaliseHeight(_ height: CGFloat) -> CGFloat{
+        guard let currentImg = viewModel.currentImage else {
+            print("\nCurrent image is nil\n\n")
+            return  0.0}
+        let imgHeight = currentImg.extent.height
+        
+        return height / imgHeight
+    }
+    
+    
+    private func deNormaliseWidth(_ width: CGFloat) -> CGFloat{
+        guard let currentImg = viewModel.currentImage else {
+            print("\nCurrent image is nil\n\n")
+            return  0.0}
+        let imgwidth = currentImg.extent.width
+        
+        return width * imgwidth
+    }
+    
+    private func deNormaliseHeight(_ height: CGFloat) -> CGFloat{
+        guard let currentImg = viewModel.currentImage else {
+            print("\nCurrent image is nil\n\n")
+            return  0.0}
+        let imgHeight = currentImg.extent.height
+        
+        return height * imgHeight
+    }
     
     private func radialMaskGesture() -> some Gesture {
         DragGesture(minimumDistance: 10)
@@ -800,13 +904,14 @@ struct ImageOverlayView: View {
                 // Calculate CoreImage variables
                 let ciStart = convertCoords(value.startLocation)
                 let ciEnd = convertCoords(value.location)
-                $radialStartPointBinding.wrappedValue = ciStart
-                $radialEndPointBinding.wrappedValue = ciEnd
+                
+                $radialStartPointBinding.wrappedValue = normaliseCoord(ciStart)
+                $radialEndPointBinding.wrappedValue = normaliseCoord(ciEnd)
                 
                 let (ciWidth, ciHeight) = calculateRadialWidthAndHeightForCI(ciStart, ciEnd)
                 
-                $radialWidthBinding.wrappedValue = ciWidth
-                $radialHeightBinding.wrappedValue = ciHeight
+                $radialWidthBinding.wrappedValue = normaliseWidth(ciWidth)
+                $radialHeightBinding.wrappedValue = normaliseHeight(ciHeight)
                 
                 
             }
@@ -829,13 +934,13 @@ struct ImageOverlayView: View {
                 // Calculate CoreImage variables
                 let ciStart = convertCoords(value.startLocation)
                 let ciEnd = convertCoords(value.location)
-                $radialStartPointBinding.wrappedValue = ciStart
-                $radialEndPointBinding.wrappedValue = ciEnd
+                $radialStartPointBinding.wrappedValue = normaliseCoord(ciStart)
+                $radialEndPointBinding.wrappedValue = normaliseCoord(ciEnd)
                 
                 let (ciWidth, ciHeight) = calculateRadialWidthAndHeightForCI(ciStart, ciEnd)
                 
-                $radialWidthBinding.wrappedValue = ciWidth
-                $radialHeightBinding.wrappedValue = ciHeight
+                $radialWidthBinding.wrappedValue = normaliseWidth(ciWidth)
+                $radialHeightBinding.wrappedValue = normaliseHeight(ciHeight)
                 
                 
                 
@@ -855,7 +960,7 @@ struct ImageOverlayView: View {
                     x: initialRadialEnd.x + gesture.translation.width,
                     y: initialRadialEnd.y + gesture.translation.height
                 )
-                
+
                 
             }
             .onEnded { _ in
@@ -866,13 +971,13 @@ struct ImageOverlayView: View {
                 // Calculate CoreImage variables
                 let ciStart = convertCoords(viewModel.radialUiStart)
                 let ciEnd = convertCoords(viewModel.radialUiEnd)
-                $radialStartPointBinding.wrappedValue = ciStart
-                $radialEndPointBinding.wrappedValue = ciEnd
+                $radialStartPointBinding.wrappedValue = normaliseCoord(ciStart)
+                $radialEndPointBinding.wrappedValue = normaliseCoord(ciEnd)
                 
                 let (ciWidth, ciHeight) = calculateRadialWidthAndHeightForCI(ciStart, ciEnd)
                 
-                $radialWidthBinding.wrappedValue = ciWidth
-                $radialHeightBinding.wrappedValue = ciHeight
+                $radialWidthBinding.wrappedValue = normaliseWidth(ciWidth)
+                $radialHeightBinding.wrappedValue = normaliseHeight(ciHeight)
             }
     }
     
@@ -941,12 +1046,12 @@ struct ImageOverlayView: View {
                 // CoreImage coordinate updates
                 let ciStart = convertCoords(viewModel.radialUiStart)
                 let ciEnd = convertCoords(endLocation)
-                $radialStartPointBinding.wrappedValue = ciStart
-                $radialEndPointBinding.wrappedValue = ciEnd
+                $radialStartPointBinding.wrappedValue = normaliseCoord(ciStart)
+                $radialEndPointBinding.wrappedValue = normaliseCoord(ciEnd)
 
                 let (ciWidth, ciHeight) = calculateRadialWidthAndHeightForCI(ciStart, ciEnd)
-                $radialWidthBinding.wrappedValue = ciWidth
-                $radialHeightBinding.wrappedValue = ciHeight
+                $radialWidthBinding.wrappedValue = normaliseWidth(ciWidth)
+                $radialHeightBinding.wrappedValue = normaliseHeight(ciHeight)
             }
     }
     
@@ -992,8 +1097,8 @@ struct ImageOverlayView: View {
         let ciStart = convertCoords(viewModel.uiStartPoint)
         let ciEnd = convertCoords(viewModel.uiEndPoint)
         
-        $LinearStartPointBinding.wrappedValue = ciStart
-        $LinearEndPointBinding.wrappedValue = ciEnd
+        $LinearStartPointBinding.wrappedValue = normaliseCoord(ciStart)
+        $LinearEndPointBinding.wrappedValue = normaliseCoord(ciEnd)
     }
     
 

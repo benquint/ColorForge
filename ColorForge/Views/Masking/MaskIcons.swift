@@ -251,7 +251,7 @@ struct MaskIcons: View {
     private func addLinearMask(named name: String) {
         guard let id = viewModel.currentImgID else { return }
 
-        let newMask = ImageItem.LinearGradientMask(
+        let newMask = LinearGradientMask(
             name: name,
             startPoint: LinearStartPointBinding,
             endPoint: LinearEndPointBinding
@@ -265,16 +265,13 @@ struct MaskIcons: View {
         selectedMask = newMask.id
         viewModel.selectedMask = newMask.id
 
-        
-//        Task {
-//            await pipeline.applyPipelineV2(id, dataModel)
-//        }
+
     }
     
     private func addRadialMask(named name: String) {
         guard let id = viewModel.currentImgID else { return }
 
-        let newMask = ImageItem.RadialGradientMask(
+        let newMask = RadialGradientMask(
             name: name,
             startPoint: .zero,
             endPoint: .zero,

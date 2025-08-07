@@ -184,6 +184,7 @@ struct MaskingView: View {
 			.frame(maxWidth: .infinity, maxHeight: .infinity)
 			.onAppear {
                 selectedMask = nil
+                viewModel.showMaskPoints = true
                 viewModel.selectedMask = nil
 				viewModel.maskingActive = true
 				focusedField = nil
@@ -193,6 +194,7 @@ struct MaskingView: View {
 				viewModel.showMask = false
 				viewModel.selectedMask = nil
                 viewModel.maskingActive = false
+                viewModel.showMaskPoints = false
 			}
 		
 	}

@@ -250,7 +250,10 @@ struct ThumbnailView: View {
 //            getDebayered(id)
 //        }
         
-		imgViewModel.currentImage = item.processImage
+        if let buffer = item.debayeredBuffer {
+            imgViewModel.currentImage = CIImage(cvPixelBuffer: buffer)
+        }
+		
         
         let preview: NSImage
         
@@ -285,7 +288,10 @@ struct ThumbnailView: View {
 //            getDebayered(id)
 //        }
         
-		imgViewModel.currentImage = item.processImage
+        if let buffer = item.debayeredBuffer {
+            imgViewModel.currentImage = CIImage(cvPixelBuffer: buffer)
+        }
+
         let preview: NSImage
         
         if item.previewImage == nil {

@@ -171,7 +171,7 @@ extension DataModel {
     
     func bindingToMaskValue<T: Equatable>(
         maskId: UUID,
-        keyPath: WritableKeyPath<ImageItem.MaskParameterSet, T>,
+        keyPath: WritableKeyPath<MaskParameterSet, T>,
         defaultValue: T
     ) -> Binding<T> {
         
@@ -198,7 +198,7 @@ extension DataModel {
                 }
 
                 var item = self.items[imageIndex]
-                var settings = item.maskSettings.settingsByMaskID[maskId] ?? ImageItem.MaskParameterSet()
+                var settings = item.maskSettings.settingsByMaskID[maskId] ?? MaskParameterSet()
                 let oldValue = settings[keyPath: keyPath]
                 guard oldValue != newValue else { return }
 
@@ -209,17 +209,15 @@ extension DataModel {
                 self.undoManager?.registerUndo(withTarget: self) { targetSelf in
                     guard let undoImageIndex = targetSelf.itemIndexMap[id] else { return }
                     var undoItem = targetSelf.items[undoImageIndex]
-                    var undoSettings = undoItem.maskSettings.settingsByMaskID[maskId] ?? ImageItem.MaskParameterSet()
+                    var undoSettings = undoItem.maskSettings.settingsByMaskID[maskId] ?? MaskParameterSet()
                     undoSettings[keyPath: keyPath] = oldValue
                     undoItem.maskSettings.settingsByMaskID[maskId] = undoSettings
                     targetSelf.items[undoImageIndex] = undoItem
-//                    Task { await FilterPipeline.shared.applyPipelineV2(id, targetSelf) }
                     
                     FilterPipeline.shared.applyPipelineV2Sync(id, targetSelf)
                 }
 
                 self.undoManager?.setActionName("Adjust Mask Setting")
-//                Task { await FilterPipeline.shared.applyPipelineV2(id, self) }
                 FilterPipeline.shared.applyPipelineV2Sync(id, self)
             }
         )
@@ -229,7 +227,7 @@ extension DataModel {
     
     func bindingToGradientMaskValue<T: Equatable>(
         maskId: UUID,
-        keyPath: WritableKeyPath<ImageItem.LinearGradientMask, T>,
+        keyPath: WritableKeyPath<LinearGradientMask, T>,
         defaultValue: T
     ) -> Binding<T> {
         Binding<T>(
@@ -283,7 +281,7 @@ extension DataModel {
     
     func bindingToRadialMaskValue<T: Equatable>(
         maskId: UUID,
-        keyPath: WritableKeyPath<ImageItem.RadialGradientMask, T>,
+        keyPath: WritableKeyPath<RadialGradientMask, T>,
         defaultValue: T
     ) -> Binding<T> {
         Binding<T>(

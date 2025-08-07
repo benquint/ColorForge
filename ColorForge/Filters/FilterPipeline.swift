@@ -39,8 +39,8 @@ protocol HRNode {
 }
 
 enum AnyGradientMask {
-    case linear(ImageItem.LinearGradientMask)
-    case radial(ImageItem.RadialGradientMask)
+    case linear(LinearGradientMask)
+    case radial(RadialGradientMask)
     
     var id: UUID {
         switch self {
@@ -73,19 +73,10 @@ extension FilterPipeline {
         item: ImageItem,
         nodeType: String,
         globalNode: NodeType,
-        maskBuilder: (ImageItem.MaskParameterSet) -> NodeType
+        maskBuilder: (MaskParameterSet) -> NodeType
     ) -> CIImage {
         
-        guard let uiImage = item.debayeredInit else {
-            return baseImage
-        }
-        
-        var scalar = 1.0
-        
-        if item.isExport {
-            scalar = baseImage.extent.width / uiImage.extent.width
-        }
-        
+
         
         var result = globalNode.apply(to: baseImage)
         
@@ -108,8 +99,8 @@ extension FilterPipeline {
             case .linear(let linear):
                 maskId = linear.id
                 name = linear.name
-                start = linear.startPoint * scalar
-                end = linear.endPoint * scalar
+                start = linear.startPoint
+                end = linear.endPoint
                 width = 0
                 height = 0
                 feather = 0
@@ -119,10 +110,10 @@ extension FilterPipeline {
             case .radial(let radial):
                 maskId = radial.id
                 name = radial.name
-                start = radial.startPoint * scalar
-                end =  radial.endPoint * scalar
-                width = radial.width * scalar
-                height = radial.height * scalar
+                start = radial.startPoint
+                end =  radial.endPoint
+                width = radial.width
+                height = radial.height
                 feather = radial.feather
                 invert = radial.invert
                 opacity = radial.opacity
@@ -138,10 +129,10 @@ extension FilterPipeline {
             switch mask {
             case .linear:
                 if start == end {
-                    print("[MaskPipeline] Applying unmasked node for linear mask '\(name)' (\(maskId))")
+                    
                     result = maskNode.apply(to: result)
                 } else {
-                    print("[MaskPipeline] Applying masked node for linear mask '\(name)' (\(maskId))")
+                
                     let maskedOutput = maskNode.apply(to: baseImage)
                     result = maskedOutput.applyLinearGradientAndBlend(start, end, result)
                 }
@@ -151,7 +142,7 @@ extension FilterPipeline {
                 if start == end {
                     result = maskNode.apply(to: result)
                 } else {
-                    print("[MaskPipeline] Applying masked node for linear mask '\(name)' (\(maskId))")
+
                     let maskedOutput = maskNode.apply(to: baseImage)
                     result = maskedOutput.applyRadialMask(
                         result,
@@ -180,13 +171,7 @@ extension FilterPipeline {
     ) -> CIImage {
         var result = baseImage
         
-        guard let uiImage = item.debayeredInit else {
-            return baseImage
-        }
-        
-        let scalar: CGFloat = item.isExport
-        ? baseImage.extent.width / uiImage.extent.width
-        : 1.0
+
         
         let linear = item.maskSettings.linearGradients.map { AnyGradientMask.linear($0) }
         let radial = item.maskSettings.radialGradients.map { AnyGradientMask.radial($0) }
@@ -206,8 +191,8 @@ extension FilterPipeline {
             switch mask {
             case .linear(let linear):
                 maskId = linear.id
-                start = linear.startPoint * scalar
-                end = linear.endPoint * scalar
+                start = linear.startPoint
+                end = linear.endPoint
                 width = 0
                 height = 0
                 feather = 0
@@ -216,10 +201,10 @@ extension FilterPipeline {
                 
             case .radial(let radial):
                 maskId = radial.id
-                start = radial.startPoint * scalar
+                start = radial.startPoint
                 end = .zero
-                width = radial.width * scalar
-                height = radial.height * scalar
+                width = radial.width
+                height = radial.height
                 feather = radial.feather
                 invert = radial.invert
                 opacity = radial.opacity
@@ -541,7 +526,7 @@ class FilterPipeline: ObservableObject {
         "HueSaturationDensityNode"
     ]
     
-    private func getSelectedMask(from item: ImageItem) -> ImageItem.LinearGradientMask? {
+    private func getSelectedMask(from item: ImageItem) -> LinearGradientMask? {
         print("Available mask IDs: \(item.maskSettings.linearGradients.map(\.id))")
         guard let selectedID = ImageViewModel.shared.selectedMask else {
             print("No selected mask ID in ImageViewModel")
@@ -558,7 +543,7 @@ class FilterPipeline: ObservableObject {
     }
     
     
-    private func duplicateNodeWithMask(_ node: FilterNode, mask: ImageItem.LinearGradientMask) -> FilterNode? {
+    private func duplicateNodeWithMask(_ node: FilterNode, mask: LinearGradientMask) -> FilterNode? {
         guard var maskable = node as? FilterNodeMaskable else { return nil }
         maskable.isMask = true
         maskable.maskData = mask // or use a strong-typed var like `maskable.linearGradientMask = mask`
@@ -572,21 +557,12 @@ class FilterPipeline: ObservableObject {
     // MARK: - Apply Pipelines
     
     
-    //	@Published var scaledExtent: CGRect?
-    private var didWarmUp = false
+
     @Published var currentID: UUID? = nil {
         didSet{
             //			print("FilterPipeline, currentID set to: \(currentID)")
         }
     }
-    
-    func applyPipelineInit() {
-        var isInit = true
-        let isExport = false
-        
-        
-    }
-    
     
     
     @Published var currentURL: URL?
@@ -1150,6 +1126,7 @@ class FilterPipeline: ObservableObject {
             result = thogResult
             
         }
+
         
         let finalFlash = flashPreview
         
