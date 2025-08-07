@@ -122,6 +122,8 @@ struct ImageView: View {
             viewModel.imageViewActive = true
             viewModel.drawingLinearMask = false
             
+            saveItem()
+            
 //            GrainModel.shared.grain54 = nil // Need to handle this better
 		}
 //        .onChange(of: viewModel.batchProcessComplete) {
@@ -157,6 +159,15 @@ struct ImageView: View {
             }
             print("Succesfully assigned full res buffer")
         }
+    }
+    
+    // Test func
+    private func saveItem() {
+        guard let id = viewModel.currentImgID else {return}
+        guard let item = dataModel.items.first(where: { $0.id == id }) else {
+            return
+        }
+        item.toDisk()
     }
 
 	

@@ -15,11 +15,13 @@ struct RawAdjustView: View {
     @Binding var exposure: Float
     @Binding var contrast: Float
     @Binding var saturation: Float
+    
+    @Binding var isRawAdjustCollapsed: Bool
 
     var body: some View {
         CollapsibleSectionView(
             title: "Exposure :",
-            isCollapsed: $isCollapsed,
+            isCollapsed: $isRawAdjustCollapsed,
             content: {
                 VStack(alignment: .leading, spacing: 10) {
 

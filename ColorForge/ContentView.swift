@@ -32,6 +32,8 @@ struct ContentView: View {
     
     @State private var selectedTool: SAMTool?
     
+    // Collapsed States
+    @State private var isRawAdjustCollapsed: Bool = false
     
     var body: some View {
         VStack (spacing: 0) {
@@ -68,7 +70,8 @@ struct ContentView: View {
                         radialInvertBinding: radialInvertBinding,
                         radialOpacityBinding: radialOpacityBinding,
                         showsidebar: $showsidebar,
-                        selectedTool: $selectedTool
+                        selectedTool: $selectedTool,
+                        isRawAdjustCollapsed: $isRawAdjustCollapsed
                         
                     )
                     .transition(.move(edge: .leading))

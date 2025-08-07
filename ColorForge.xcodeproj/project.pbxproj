@@ -57,6 +57,7 @@
 				Filters/Nodes/LoadingModel.swift,
 				Filters/Nodes/ToAdapt.swift,
 				Filters/pipelineoldorder.swift,
+				Info.plist,
 				"Views/BottomBarView 2.swift",
 				Views/ImageViews/MainImageView/ImageViewSAM.swift,
 				Views/SidebarViewOld.swift,
@@ -412,6 +413,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ColorForge/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -444,6 +446,7 @@
 				ENABLE_PREVIEWS = YES;
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ColorForge/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

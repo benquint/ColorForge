@@ -42,6 +42,10 @@ struct SidebarView: View {
     @Binding var selectedTool: SAMTool?
     
     
+    
+    @Binding var isRawAdjustCollapsed: Bool
+    
+    
     // MARK: - View Toggle Enum
     
     // State to toggle between views
@@ -242,7 +246,8 @@ struct SidebarView: View {
                                     magentaDen: magentaDen,
                                     yellowHue: yellowHue,
                                     yellowSat: yellowSat,
-                                    yellowDen: yellowDen
+                                    yellowDen: yellowDen,
+                                    isRawAdjustCollapsed: $isRawAdjustCollapsed
                                 )
                             } else if selectedView == .texture {
                                 TextureView(

@@ -49,7 +49,7 @@ struct RawView: View {
     @Binding var yellowSat: Float
     @Binding var yellowDen: Float
     
-
+    @Binding var isRawAdjustCollapsed: Bool
 	
 	var body: some View {
 		VStack {
@@ -67,7 +67,8 @@ struct RawView: View {
 			RawAdjustView(
                 exposure: $exposure,
                 contrast: $contrast,
-                saturation: $saturation
+                saturation: $saturation,
+                isRawAdjustCollapsed: $isRawAdjustCollapsed,
             )
 
 				
