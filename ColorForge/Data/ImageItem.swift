@@ -6,6 +6,7 @@ import SwiftUI
 enum GradientMaskType: String, Codable, Equatable {
     case linear
     case radial
+    case aiMask
 }
 
 struct ImageItem: Identifiable, Equatable {
@@ -186,7 +187,7 @@ struct ImageItem: Identifiable, Equatable {
 	// MARK: - Print Halation
     var printHalation_size: Float = 10.0
     var printHalation_amount: Float = 50.0
-    var printHalation_darkenMode: Bool = true
+    var printHalation_darkenMode: Bool = false
     var printHalation_apply: Bool = false
 
 	// MARK: - Neg Conversion
@@ -227,6 +228,8 @@ struct ImageItem: Identifiable, Equatable {
 	// MARK: - Scan
 	var applyScanMode: Bool = false
 	var applyPFE: Bool = false
+    var apply2383: Bool = true
+    var apply3513: Bool = false
 	var offsetRGB: Float = 0.0
 	var offsetRed: Float = 0.0
 	var offsetGreen: Float = 0.0
@@ -769,7 +772,7 @@ struct ImageItem: Identifiable, Equatable {
 		// MARK: - Print Halation
         printHalation_size: Float = 10.0,
         printHalation_amount: Float = 50.0,
-        printHalation_darkenMode: Bool = true,
+        printHalation_darkenMode: Bool = false,
         printHalation_apply: Bool = false,
 
 		// MARK: - Neg Conversion
@@ -808,6 +811,8 @@ struct ImageItem: Identifiable, Equatable {
 		// MARK: - Scan
 		applyScanMode: Bool = false,
 		applyPFE: Bool = false,
+        apply2383: Bool = true,
+        apply3513: Bool = false,
 		offsetRGB: Float = 0.0,
 		offsetRed: Float = 0.0,
 		offsetGreen: Float = 0.0,
@@ -983,6 +988,8 @@ struct ImageItem: Identifiable, Equatable {
 		
 		self.applyScanMode = applyScanMode
 		self.applyPFE = applyPFE
+        self.apply2383 = apply2383
+        self.apply3513 = apply3513
 		self.offsetRGB = offsetRGB
 		self.offsetRed = offsetRed
 		self.offsetGreen = offsetGreen

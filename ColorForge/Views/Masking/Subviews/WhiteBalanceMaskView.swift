@@ -14,6 +14,7 @@ struct WhiteBalanceMaskView: View {
 	@EnvironmentObject var viewModel: ImageViewModel
 	@FocusState private var focusedField: String?
 	@State private var isCollapsed: Bool = true
+    @State private var wbPopoverPresented = false
 	
 	@Binding var temp: Float
 	@Binding var tint: Float
@@ -76,32 +77,54 @@ struct WhiteBalanceMaskView: View {
 	
 	var body: some View {
 		
-		CollapsibleSectionView(
+		SubSection(
 			title: "White balance:",
+            icon: "camera.on.rectangle",
 			isCollapsed: $isCollapsed,
+            resetAction: {
+                
+            },
 			content: {
-				VStack(alignment: .leading, spacing: 10) {
+				VStack() {
 					
 					
 					// MARK: - White balance drop down
-					HStack {
-						Text("Preset:")
-							.foregroundStyle(Color("SideBarText"))
+                    HStack {
+                        Text("Preset:")
+                            .foregroundStyle(Color("SideBarText"))
+
+                        Spacer()
+
+                        Button {
+                            wbPopoverPresented.toggle()
+                        } label: {
+                            HStack {
+                                Text(whiteBalancePresetBinding.wrappedValue)
+                                    .foregroundColor(Color("SideBarText"))
+                                Spacer()
+                                Image(systemName: "chevron.down")
+                                    .foregroundColor(Color("SideBarText").opacity(0.7))
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .frame(width: 120)
+                            .background(Color("MenuAccent"))
+                        }
+                        .buttonStyle(.plain)
+                        .popover(isPresented: $wbPopoverPresented, arrowEdge: .bottom) {
+                            VStack(alignment: .leading, spacing: 0) {
+                                ForEach(WhiteBalancePreset.allCases.indices, id: \.self) { i in
+                                    let p = WhiteBalancePreset.allCases[i]
+                                    wbPopoverOption(index: i, preset: p)
+                                }
+                            }
+                            .background(Color("MenuAccent"))
+                            .frame(width: 150)
+                        }
+
+                        Spacer()
 						
-						Spacer()
-						
-						Picker("", selection: whiteBalancePresetBinding) {
-							ForEach(WhiteBalancePreset.allCases, id: \.self) { preset in
-								Text(preset.rawValue).tag(preset.rawValue)
-							}
-						}
-						.pickerStyle(MenuPickerStyle())
-						.frame(width: 125)
-						
-						Spacer()
-						
-						
-						// White balance picker
+						// White balance picker - DO NOT CHANGE THIS
 						ZStack {
 							// Background Circle
 							Circle()
@@ -136,9 +159,9 @@ struct WhiteBalanceMaskView: View {
 					// MARK: - White balance
 					
 					SliderView(
-						label: "Tint:",
+						label: "Temperature:",
 						binding: $temp,
-						defaultValue: 0.0,
+						defaultValue: initTemp,
 						range: 2000.0...10000.0,
 						step: 1,
 						formatter: wholeNumber
@@ -149,7 +172,7 @@ struct WhiteBalanceMaskView: View {
 					SliderView(
 						label: "Tint:",
 						binding: $tint,
-						defaultValue: 0.0,
+						defaultValue: initTint,
 						range: -150.0...150.0,
 						step: 1,
 						formatter: wholeNumber
@@ -161,17 +184,40 @@ struct WhiteBalanceMaskView: View {
 				.onAppear {
 					focusedField = nil
 				}
-//				onChange(of: viewModel.drawingNewMask) {
-//					if viewModel.drawingNewMask {
-//						temp = initTemp
-//						tint = initTint
-//					}
-//				}
-			},
-			resetAction: {
-				
+
 			}
+
 		)
 	}
+    
+    @ViewBuilder
+    private func wbPopoverOption(index: Int, preset: WhiteBalancePreset) -> some View {
+        Button {
+            whiteBalancePresetBinding.wrappedValue = preset.rawValue
+            wbPopoverPresented = false
+        } label: {
+            HStack {
+                Text(preset.rawValue)
+                    .foregroundColor(Color("SideBarText"))
+                Spacer()
+                Image(systemName: iconName(for: preset))
+                    .foregroundStyle(Color("SideBarText"))
+            }
+            .padding(10)
+            .background(index % 2 == 0 ? Color("MenuAccentDark") : Color("MenuAccentLight"))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func iconName(for preset: WhiteBalancePreset) -> String {
+        switch preset {
+        case .tungsten: return "lightbulb"
+        case .daylight: return "sun.max"
+        case .cloudy:   return "cloud"
+        case .shade:    return "tree.fill"
+        case .custom:   return "person"
+        case .asShot:   return "camera"
+        }
+    }
 }
 

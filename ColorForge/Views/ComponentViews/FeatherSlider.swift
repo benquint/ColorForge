@@ -9,6 +9,7 @@
 import SwiftUI
 
 struct FeatherSlider: View {
+    @EnvironmentObject var samModel: SamModel
     @EnvironmentObject var viewModel: ImageViewModel
 
     @Binding var feather: Float

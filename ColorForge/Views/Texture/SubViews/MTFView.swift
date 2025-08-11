@@ -49,55 +49,26 @@ struct MTFView: View {
 
 	var body: some View {
 		
-		CollapsableSectionViewInfo(
+		SubSection(
 			title: "MTF Curve:",
+            icon: "drop.triangle",
+            checkBoxBinding: $apply,
 			isCollapsed: $isCollapsed,
-//			isCollapsed: $sidebarViewModel.grainCollapsed,
+            resetAction: {
+                    selectedGateWidth = 0
+                    mtfBlend = 50
+                    applyMTF = false
+                },
 			content: {
-				VStack(alignment: .leading, spacing: 10) {
+				VStack() {
 
 					// Format
 					HStack {
-						Text("Format:")
-							.foregroundStyle(Color("SideBarText"))
-						Spacer()
-						
 						// Select Format / Gate Width
-						
-						Picker(selection: gateWidthBinding, label: EmptyView()) {
-                            Text("5x4").tag(GateWidth.largeFormat54)
-							Text("Medium Format").tag(GateWidth.mediumFormat)
-							Text("Crop Medium Format").tag(GateWidth.cropMedium)
-							Text("35mm Stil").tag(GateWidth.thirtyFive)
-							Text("Half Frame").tag(GateWidth.halfFrame)
-							Text("35mm Std").tag(GateWidth.motion35Standard)
-							Text("35mm Super").tag(GateWidth.motion35Super)
-							Text("16mm").tag(GateWidth.motion16)
-							Text("8mm").tag(GateWidth.motion8)
-							Text("Super 8").tag(GateWidth.motionSuper8)
-						}
-						.pickerStyle(MenuPickerStyle())
-						.labelsHidden()
-						.frame(width: 130)
-						
-						Spacer()
-						
-						
-						// Apply MTF
-						Toggle("", isOn: $apply)
-							.toggleStyle(SwitchToggleStyle())
-							.labelsHidden()
-							.padding(.trailing, 0)
-							.onChange(of: apply) {
-								applyMTF = apply
-							}
-							.onChange(of: viewModel.currentImgID) {
-								apply = applyMTF
-							}
-						
+                        PopoverGateWidthPicker(selection: gateWidthBinding)
+                            
 						
 					}
-					.padding(5)
 					
                     SliderView(
                         label: "Amount:",
@@ -108,38 +79,134 @@ struct MTFView: View {
                         formatter: wholeNumber
                     )
 
-				
-
-
 				}
-//				.onAppear {
-//					if let current = bindings.selectedGateWidth?.wrappedValue {
-//						gateWidth = GateWidth(rawValue: current) ?? .mediumFormat
-//					}
-//				}
 				.onAppear {
 					focusedField = nil
+                    apply = applyMTF
 				}
 				.onChange(of: isCollapsed) { newValue in
 					AppDataManager.shared.setCollapsed(newValue, for: "MTFView")
 				}
-			},
-			resetAction: {
-					selectedGateWidth = 0
-					mtfBlend = 50
-					applyMTF = false
-				},
-				infoTitle: "MTF Curve",
-				infoText: """
-			This filter emulates the Modulation Transfer Function (MTF) of film negatives — a curve that describes how well fine detail is preserved from scene to negative. Rather than artificially sharpening or blurring the image, the MTF curve models the natural sharpness falloff found in analog film, where fine textures lose detail more quickly than coarse ones.
+                .onChange(of: apply) {
+                    applyMTF = apply
+                }
+                .onChange(of: viewModel.currentImgID) {
+                    apply = applyMTF
+                }
+			}
 
-			Applying the MTF curve restores the characteristic soft roll-off of real film negatives.
-
-			The Format setting changes the curve shape to match the resolving power of different film formats:
-			• Larger formats (like Medium Format or 35mm still) maintain contrast in finer detail,
-			• Smaller formats (like 8mm or Super 8) fall off more rapidly, producing a softer, more organic look.
-			""",
-			infoBackgroundImage: "mtfGrad" // or nil if you don't want a background
 		)
 	}
+    
+    private struct PopoverGateWidthPicker: View {
+        @Binding var selection: MTFView.GateWidth
+        @State private var isPopoverPresented = false
+
+        private struct Option {
+            let value: MTFView.GateWidth
+            let title: String
+            let spec: String
+            let pad: CGFloat
+            let rowShade: RowShade
+            enum RowShade { case dark, light }
+        }
+
+        // Display labels/specs derived from your enum comments
+        private var options: [Option] {
+            [
+                .init(value: .largeFormat54,     title: "Large Format",        spec: "5×4 inches",  pad: 0,  rowShade: .dark),
+                .init(value: .mediumFormat,      title: "Medium Format",       spec: "60.0 mm",          pad: 2,  rowShade: .light),
+                .init(value: .cropMedium,        title: "Crop Medium Format",  spec: "43.8 mm",          pad: 4,  rowShade: .dark),
+                .init(value: .thirtyFive,        title: "35mm Still",          spec: "36.0 mm",          pad: 6,  rowShade: .light),
+                .init(value: .halfFrame,         title: "Half Frame",          spec: "18.0 mm",          pad: 10, rowShade: .dark),
+                .init(value: .motion35Standard,  title: "35mm Std (Motion)",   spec: "21.95 mm",         pad: 8,  rowShade: .light),
+                .init(value: .motion35Super,     title: "35mm Super (Motion)", spec: "24.89 mm",         pad: 7,  rowShade: .dark),
+                .init(value: .motion16,          title: "16mm (Motion)",       spec: "10.26 mm",         pad: 12, rowShade: .light),
+                .init(value: .motion8,           title: "8mm (Motion)",        spec: "4.8 mm",           pad: 14, rowShade: .dark),
+                .init(value: .motionSuper8,      title: "Super 8 (Motion)",    spec: "5.79 mm",          pad: 13, rowShade: .light),
+            ]
+        }
+
+        private var currentLabel: String {
+            options.first(where: { $0.value == selection })?.title ?? "Select Format"
+        }
+        
+        private var currentOption: Option? {
+            options.first { $0.value == selection }
+        }
+
+        var body: some View {
+            Button {
+                isPopoverPresented.toggle()
+            } label: {
+                HStack() {
+                    Text(currentLabel)
+                        .foregroundColor(Color("SideBarText"))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.9)
+
+                    Spacer(minLength: 8)
+
+                    // Selected format icon
+                    if let opt = currentOption {
+                        Image(systemName: "rectangle")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .padding(opt.pad)
+                            .frame(width: 18, height: 18)
+                            .foregroundColor(Color("SideBarText"))
+                    }
+
+                    Image(systemName: "chevron.down")
+                        .foregroundColor(Color("SideBarText").opacity(0.7))
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .frame(width: 250)
+                .background(Color("MenuAccent"))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $isPopoverPresented, arrowEdge: .bottom) {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(options.enumerated()), id: \.offset) { idx, opt in
+                        popoverRow(index: idx, option: opt)
+                    }
+                }
+                .background(Color("MenuAccent"))
+                .frame(width: 300)
+            }
+        }
+
+        @ViewBuilder
+        private func popoverRow(index: Int, option: Option) -> some View {
+            Button {
+                selection = option.value
+                isPopoverPresented = false
+            } label: {
+                HStack(spacing: 8) {
+                    Text(option.title)
+                        .foregroundColor(Color("SideBarText"))
+                    Spacer(minLength: 8)
+                    Text(option.spec)
+                        .foregroundColor(Color("SideBarText"))
+                    Image(systemName: "rectangle")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .padding(option.pad)
+                        .frame(width: 30, height: 30)
+                        .foregroundColor(Color("SideBarText"))
+                }
+                .padding(10)
+                .background(
+                    (option.rowShade == .dark ? Color("MenuAccentDark") : Color("MenuAccentLight"))
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+    
+    
+    
+    
 }

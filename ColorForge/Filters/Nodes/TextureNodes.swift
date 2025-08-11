@@ -132,70 +132,6 @@ struct PrintHalationV2Node: FilterNode {
 
 
 
-//struct PrintHalationNode: FilterNode {
-//
-//    let radiusMultiplier: CGFloat
-//    let radiusExponent: CGFloat
-//    let opacityMultiplier: Float
-//    let applyPrintHalation: Bool
-//    
-//    func apply(to input: CIImage) -> CIImage {
-//        
-//        var radiusMultiplierNorm = radiusMultiplier / 100.0
-//        var radiusExponentNorm = radiusExponent / 100.0
-//        var opacityMultipliNorm = opacityMultiplier / 100.0
-//        
-//        // Return early if not applying
-//        if !applyPrintHalation {return input}
-//        
-//        let inputClamped = input.clampedToExtent()
-//        
-//        // Function to adjust blur radius based on image height and radiusMultiplier
-//        func calculateBlurRadius(for originalRadius: CGFloat, basedOn imageHeight: CGFloat) -> CGFloat {
-//            let baseHeight: CGFloat = 1440.0
-//            let blurScaleFactor = imageHeight / baseHeight * ImageViewModel.shared.zoomScale
-//            let radiusExponent = radiusExponent // currently 0
-//            
-//            // Exaggerate the effect of the radiusMultiplier by applying a nonlinear scaling
-//            let exaggeratedMultiplier = radiusMultiplierNorm * pow(originalRadius, radiusExponent) // You can experiment with the exponent (1.5, 2.0, etc.)
-//            
-//            return originalRadius * blurScaleFactor * exaggeratedMultiplier  // Apply exaggerated multiplier here
-//        }
-//        
-//        
-//        // Linear input for now - may remove and place right after enlarger controls or before.
-//        let linear = input.decodeGamma22()
-//        let imageHeight = linear.extent.height
-//        
-//        let blend1 = linear.applyGaussianBlurAndComposite(blurRadius: calculateBlurRadius(for: 0.5, basedOn: imageHeight), blendSource: linear, opacity: min(0.9 * opacityMultipliNorm, 1.0))
-//        
-//        
-//        let blend2 = linear.applyGaussianBlurAndComposite(blurRadius: calculateBlurRadius(for: 1.0, basedOn: imageHeight), blendSource: blend1, opacity: min(0.45 * opacityMultipliNorm, 1.0))
-//        
-//        
-//        let blend3 = linear.applyGaussianBlurAndComposite(blurRadius: calculateBlurRadius(for: 3.0, basedOn: imageHeight), blendSource: blend2, opacity: min(0.15 * opacityMultipliNorm, 1.0))
-//        
-//        
-//        let blend4 = input.applyGaussianBlurAndComposite(blurRadius: calculateBlurRadius(for: 8.0, basedOn: imageHeight), blendSource: blend3, opacity: min(0.07 * opacityMultipliNorm, 1.0))
-//        
-//        let whiteColor = CIColor(red: 1.0, green: 1.0, blue: 1.0)
-////        let whiteImage = CIImage(color: whiteColor).cropped(to: blend4.extent)
-//        let whiteImage = CIImage(color: whiteColor)
-//        
-//        let finalBlend = whiteImage.multiply(blend4)
-//        
-//        let gamma22 = finalBlend.encodeGamma22()
-//        
-//        let finalCropped = gamma22.cropped(to: input.extent)
-//        
-//        let cachedResult = finalCropped.insertingIntermediate(cache: true)
-//        
-//        return cachedResult
-//        
-//    }
-//	
-//	
-//}
 
 // Currently supports
 
@@ -455,3 +391,90 @@ struct RealisticFilmGrainNode: FilterNode {
 //    
     
 
+// Need to handle is zoomed
+struct NoiseGrainNode: FilterNode {
+    let isExport: Bool
+    
+    func apply(to input: CIImage) -> CIImage {
+		let width = input.extent.width
+		let height = input.extent.height
+		
+		let gray = CIImage(color: .gray).cropped(to: input.extent)
+		
+		var plate = gray
+
+		if isExport {
+			guard let full_plate = GrainModel.shared.initialGrainPlate else {return input}
+			plate = full_plate
+		} else {
+			guard let cgImage = GrainModel.shared.initialGrainPlate2048 else {return input}
+			plate = CIImage(cgImage: cgImage)
+		}
+		
+		let aspectRatio = width / height
+		let plateLongEdge = plate.extent.height
+		var scale: CGFloat = 1.0
+		
+		if aspectRatio > 1.0 {
+			plate = plate.oriented(.right)
+		}
+		
+		scale = max(width / plate.extent.height, height / plate.extent.height)
+		
+		plate = plate.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+		
+		let result = input.arriOverlay(plate)
+        
+//        return result.cropped(to: input.extent)
+		return input
+    }
+}
+
+
+
+// Need to handle is zoomed
+struct NoiseGrainNodeV2: FilterNode {
+    let isExport: Bool
+    let uiScale: Float
+    let id: UUID
+    
+    func apply(to input: CIImage) -> CIImage {
+        
+        let grain = GrainModel.shared.generateGrain(id, input, 1.0, uiScale, isExport: isExport)
+        
+        let blend = input.arriSoftLight(grain)
+        
+        return blend.cropped(to: input.extent)
+    }
+}
+
+struct MTFTestNode: FilterNode {
+    func apply(to input: CIImage) -> CIImage {
+        
+        guard let chartURL = Bundle.main.url(forResource: "TestChart", withExtension: "tif") else {
+            print("Failed to load GrainDesaturatedP400.png from bundle.")
+            return input
+        }
+        
+        guard let testChart = CIImage(contentsOf: chartURL) else {
+            print("Failed to create CIImage from grain file.")
+            return input
+        }
+        
+        
+        let scale = ImageViewModel.shared.downAndUpScale
+        
+        if scale != 1.0 {
+            
+            let result = testChart.downAndUp(scale).cropped(to: testChart.extent)
+            
+            debugSave(result, "MTFResult_ScaledTo\(scale)")
+            
+            
+            return result
+            
+        } else {
+            return input
+        }
+    }
+}

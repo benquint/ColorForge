@@ -50,6 +50,8 @@ struct DecodeNegativeNode: FilterNode {
 	let stockChoice: Int
 	
 	func apply(to input: CIImage) -> CIImage {
+        guard convertToNeg else {return input}
+        
 		if convertToNeg && !applyScanMode {
 			let dMinRed: Float = 0.0
 			let dMinGreen: Float = 0.0

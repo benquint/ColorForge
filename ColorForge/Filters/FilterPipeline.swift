@@ -41,11 +41,13 @@ protocol HRNode {
 enum AnyGradientMask {
     case linear(LinearGradientMask)
     case radial(RadialGradientMask)
+    case ai(AiMask)
     
     var id: UUID {
         switch self {
         case .linear(let mask): return mask.id
         case .radial(let mask): return mask.id
+        case .ai(let mask): return mask.id
         }
     }
     
@@ -53,6 +55,7 @@ enum AnyGradientMask {
         switch self {
         case .linear(let mask): return mask.name
         case .radial(let mask): return mask.name
+        case .ai(let mask): return mask.name
         }
     }
 }
@@ -82,7 +85,8 @@ extension FilterPipeline {
         
         let linear = item.maskSettings.linearGradients.map { AnyGradientMask.linear($0) }
         let radial = item.maskSettings.radialGradients.map { AnyGradientMask.radial($0) }
-        let relevantMasks = linear + radial
+        let ai = item.maskSettings.aiMasks.map { AnyGradientMask.ai($0) }
+        let relevantMasks = linear + radial + ai
         
         for mask in relevantMasks {
             let maskId: UUID
@@ -94,6 +98,7 @@ extension FilterPipeline {
             let feather: Float
             let invert: Bool
             let opacity: Float
+            let maskImage: CIImage
             
             switch mask {
             case .linear(let linear):
@@ -106,6 +111,7 @@ extension FilterPipeline {
                 feather = 0
                 invert = false
                 opacity = 100
+                maskImage = CIImage.empty()
                 
             case .radial(let radial):
                 maskId = radial.id
@@ -117,8 +123,22 @@ extension FilterPipeline {
                 feather = radial.feather
                 invert = radial.invert
                 opacity = radial.opacity
+                maskImage = CIImage.empty()
+                
+                
+            case .ai(let ai):
+                maskId = ai.id
+                name = ai.name
+                start = .zero
+                end =  .zero
+                width = 0
+                height = 0
+                feather = 0.0 /*ai.feather*/
+                invert = ai.invert
+                opacity = ai.opacity
+                maskImage = ai.maskImage ?? CIImage.empty()
             }
-            
+ 
             guard let settings = item.maskSettings.settingsByMaskID[maskId] else {
                 continue
             }
@@ -154,6 +174,15 @@ extension FilterPipeline {
                         opacity
                     )
                 }
+                
+            case .ai:
+ 
+
+                let maskedOutput = maskNode.apply(to: baseImage)
+//                    debugSave(maskImage, "PiplineMaskImage")
+//                result = result.applyAiMask(maskImage, maskedOutput, feather, invert)
+                result = result.blendWithMask(maskImage, maskedOutput)
+                
             }
         }
         
@@ -175,7 +204,8 @@ extension FilterPipeline {
         
         let linear = item.maskSettings.linearGradients.map { AnyGradientMask.linear($0) }
         let radial = item.maskSettings.radialGradients.map { AnyGradientMask.radial($0) }
-        let relevantMasks = linear + radial
+        let ai = item.maskSettings.aiMasks.map { AnyGradientMask.ai($0) }
+        let relevantMasks = linear + radial + ai
         
         for mask in relevantMasks {
             // Extract shared values
@@ -187,6 +217,7 @@ extension FilterPipeline {
             let feather: Float
             let invert: Bool
             let opacity: Float
+            let maskImage: CIImage
             
             switch mask {
             case .linear(let linear):
@@ -198,20 +229,35 @@ extension FilterPipeline {
                 feather = 0
                 invert = false
                 opacity = 100
+                maskImage = CIImage.empty()
+                
                 
             case .radial(let radial):
                 maskId = radial.id
                 start = radial.startPoint
-                end = .zero
+                end =  radial.endPoint
                 width = radial.width
                 height = radial.height
                 feather = radial.feather
                 invert = radial.invert
                 opacity = radial.opacity
+                maskImage = CIImage.empty()
+                
+                
+            case .ai(let ai):
+                maskId = ai.id
+                start = .zero
+                end =  .zero
+                width = 0
+                height = 0
+                feather = ai.feather
+                invert = ai.invert
+                opacity = ai.opacity
+                maskImage = ai.maskImage ?? CIImage.empty()
+                
             }
             
             guard let params = item.maskSettings.settingsByMaskID[maskId] else {
-                print("No params for mask id \(maskId)")
                 continue
             }
             
@@ -250,6 +296,14 @@ extension FilterPipeline {
                         invert,
                         opacity
                     ).insertingIntermediate(cache: true)
+                }
+                
+            case .ai:
+                if start == end {
+                    result = node.apply(to: result)
+                } else {
+                    let maskedOutput = node.apply(to: baseImage)
+                    result = result.blendWithMask(maskImage, maskedOutput)
                 }
             }
         }
@@ -641,7 +695,7 @@ class FilterPipeline: ObservableObject {
     }
     
     @discardableResult
-    func applyPipelineV2Sync(_ id: UUID, _ dataModel: DataModel, _ context: CIContext? = nil) -> CIImage? {
+    func applyPipelineV2Sync(_ id: UUID, _ dataModel: DataModel, _ inputImage: CIImage? = nil, _ isFirstLoad: Bool? = false) -> CIImage? {
         let viewModel = ImageViewModel.shared
         
         
@@ -650,10 +704,19 @@ class FilterPipeline: ObservableObject {
             print("No item found for ID: \(id)")
             return nil
         }
-        guard let base = self.unwrapAndReturnImagesSync(item, dataModel) else {
-            print("Failed to unwrap image")
-            return nil }
-        var result = base
+        
+        var result: CIImage
+        
+        if inputImage == nil {
+            guard let base = self.unwrapAndReturnImagesSync(item, dataModel) else {
+                print("Failed to unwrap image")
+                return nil }
+            result = base
+        } else {
+            guard let input = inputImage else { return nil}
+            result = input
+        }
+        
         
         
         
@@ -698,7 +761,8 @@ class FilterPipeline: ObservableObject {
             // Convert to AWG
             result = result.P3ToAWG()
         }
-        
+		
+
         
         // RawExposureNode
         result = applyNodeWithMasks(
@@ -722,9 +786,7 @@ class FilterPipeline: ObservableObject {
                 )
             }
         )
-        
-        
-        
+
         // Convert to logC
         result = result.Lin2LogC()
         
@@ -740,6 +802,17 @@ class FilterPipeline: ObservableObject {
             }
         )
         
+//		var index = 0
+//		let passes = 3
+//		
+//		for pass in 0..<passes {
+//			index += 1
+//			let noise = result.createNoiseAndCrop()
+//			let perlin = result.smallPerlin()
+//			debugSave(perlin, "Small Perlin\(index)")
+//			debugSave(noise, "NoiseDefault\(index)")
+//		}
+
         
         // Convert to spherical
         result = result.RGBtoSpherical()
@@ -827,6 +900,9 @@ class FilterPipeline: ObservableObject {
         thogResult = THOGNode(applyTHOG: item.applyTHOG, isExport: item.isExport, blend: item.blend, variance: item.variance, scale: item.scale).apply(to: result)
         
         
+
+        
+        
         // Convert to neg gamma 2.2
         result = result.cineonToNeg()
         result = result.encodeGamma22()
@@ -846,6 +922,15 @@ class FilterPipeline: ObservableObject {
         // Convert back
         result = result.decodeGamma22()
         result = result.negToCineon()
+        
+
+		
+//		result = NoiseGrainNodeV2(
+//			isExport: item.isExport,
+//            uiScale: item.uiScale,
+//            id: item.id
+//		).apply(to: result)
+        
         
         
         //        result = RealisticFilmGrainNode(
@@ -906,10 +991,11 @@ class FilterPipeline: ObservableObject {
             thogResult = result
         }
         
-        if item.convertToNeg {
+
             
             // OffsetNode (can be made maskable later if needed)
             let offsetNode = OffsetNode(
+                neg: item.convertToNeg,
                 applyScanMode: item.applyScanMode,
                 offsetRGB: item.offsetRGB,
                 offsetRed: item.offsetRed,
@@ -918,29 +1004,34 @@ class FilterPipeline: ObservableObject {
             )
             result = offsetNode.apply(to: result)
             
-            // Kodak2383Node
-            result = Kodak2383Node(
-                blend: item.lutBlend,
-                applyScanMode: item.applyScanMode,
-                applyPFE: item.applyPFE
-            ).apply(to: result)
-            
+            // Kodak2383Node   ScanLutNode
+        
+        result = ScanLutNode(
+            neg: item.convertToNeg,
+            blend: item.lutBlend,
+            applyScanMode: item.applyScanMode,
+            applyPFE: item.applyPFE,
+            apply2383: item.apply2383,
+            apply3513: item.apply3513
+        ).apply(to: result)
+
             
             // ScanContrastNode
             let scanContrastNode = ScanContrastNode(
+                neg: item.convertToNeg,
                 applyScanMode: item.applyScanMode,
                 scanContrast: item.scanContrast
             )
             result = scanContrastNode.apply(to: result)
             
             
-        }
-        //        // PaperSoftenNode
-        //        result = PaperSoftenNode(
-        //            applyPrintMode: item.applyPrintMode,
-        //            convertToNeg: item.convertToNeg
-        //        ).apply(to: result)
-        //
+        
+//                // PaperSoftenNode
+//                result = PaperSoftenNode(
+//                    applyPrintMode: item.applyPrintMode,
+//                    convertToNeg: item.convertToNeg
+//                ).apply(to: result)
+//        
         
         
         
@@ -1106,7 +1197,7 @@ class FilterPipeline: ObservableObject {
         )
         
         
-        if !item.applyScanMode {
+
             // ApplyAdobeCameraRawCurveNode
             result = ApplyAdobeCameraRawCurveNode(
                 convertToNeg: item.convertToNeg
@@ -1114,12 +1205,13 @@ class FilterPipeline: ObservableObject {
             
             result = AddPaperBlackNode().apply(to: result)
             
-        }
+
         
         //        result = TomJamiesonFilter(applyTom: item.applyTom).apply(to: result)
         
-        
-        
+
+//        result = MTFTestNode().apply(to: result)
+
         
         if item.applyTHOG {
             
@@ -1154,37 +1246,45 @@ class FilterPipeline: ObservableObject {
                     self.processedImage = finalImage
                     self.currentResult = finalImage
                     
+                    if let initBool = isFirstLoad {
+                        if !initBool {
+                            
+                            
+                            ImageViewModel.shared.renderSumbitted.toggle()
+                            ImageViewModel.shared.imageToRender = finalImage
+                            
+                            if viewModel.imageViewActive {
+                                
+                                if let renderer = RenderingManager.shared.renderer {
+                                    renderer.updateImage(finalImage)
+                                } else {
+                                    print("No renderer to send result to")
+                                }
+                                
+                                // Update item
+                                dataModel.updateItem(id: id) { item in
+                                    item.processImage = finalImage
+                                }
+                                
+                                
+                                    self.processPreview(finalImage, id, dataModel, RenderingManager.shared.mainImageContext)
+        
+                            } else {
+                                
+                                
+                                    self.processThumb(finalImage, id, dataModel, RenderingManager.shared.mainImageContext)
 
-                    
-                    ImageViewModel.shared.renderSumbitted.toggle()
-                    ImageViewModel.shared.imageToRender = finalImage
-                    
-                    if viewModel.imageViewActive {
-                        
-                        if let renderer = RenderingManager.shared.renderer {
-                            renderer.updateImage(finalImage)
-                        } else {
-                            print("No renderer to send result to")
-                        }
-                        
-                        // Update item
-                        dataModel.updateItem(id: id) { item in
-                            item.processImage = finalImage
-                        }
-                    
-                        
-                    } else {
-                        
-                        if context == nil {
-                            self.processThumb(finalImage, id, dataModel, RenderingManager.shared.mainImageContext)
-                        } else {
-                            guard let ciContext = context else {return}
-                            self.processThumb(finalImage, id, dataModel, ciContext)
-                        }
-                        
-                       
+                               
 
+                            }
+                        } else {
+                            dataModel.updateItem(id: id) { item in
+                                item.processImage = finalImage
+                            }
+                        }
                     }
+                    
+ 
                     
                     HistogramModel.shared.generateDataDebounced(finalImage)
                 }
@@ -1219,595 +1319,35 @@ class FilterPipeline: ObservableObject {
         }
     }
     
-    
-    func applyPipelineV2(_ id: UUID, _ dataModel: DataModel) async {
-        let viewModel = ImageViewModel.shared
-        
-        
-        guard let item = dataModel.items.first(where: { $0.id == id }) else { return }
-        
-        
-        guard let base = await self.unwrapAndReturnImages(item) else { return }
-        var result = base
-        
-        if logMode {
-            
-            result = item.url.asCIImage()
-            //			result = result.awg4_to_linearP3()
-            result = result.LogC2Lin()
-            result = result.AWGtoP3()
-            
+    func processPreview(_ image: CIImage, _ id: UUID, _ dataModel: DataModel, _ context: CIContext) {
+        let now = Date()
+        guard now.timeIntervalSince(lastThumbnailRenderTime) >= thumbnailThrottleInterval else {
+            return
         }
-        
-        
-        // TempAndTintNode
-        result = applyNodeWithMasks(
-            baseImage: result,
-            item: item,
-            nodeType: "TempAndTintNode",
-            globalNode: TempAndTintNode(
-                targetTemp: item.initTemp,
-                targetTint: item.initTint,
-                sourceTemp: item.temp,
-                sourceTint: item.tint,
-                convertToNeg: item.convertToNeg
-            ),
-            maskBuilder: { mask in
-                TempAndTintNode(
-                    targetTemp: mask.initTemp,
-                    targetTint: mask.initTint,
-                    sourceTemp: mask.temp,
-                    sourceTint: mask.tint,
-                    convertToNeg: item.convertToNeg
-                )
-            }
-        )
-        
-        if !logMode {
-            // Convert to AWG
-            result = result.P3ToAWG()
-        }
-        
-        
-        // RawExposureNode
-        result = applyNodeWithMasks(
-            baseImage: result,
-            item: item,
-            nodeType: "RawExposureNode",
-            globalNode: RawExposureNode(
-                exposure: item.exposure,
-                convertToNeg: item.convertToNeg,
-                applyScanMode: item.applyScanMode,
-                bwMode: item.bwMode,
-                isLut: false
-            ),
-            maskBuilder: { settings in
-                RawExposureNode(
-                    exposure: settings.exposure,
-                    convertToNeg: item.convertToNeg,
-                    applyScanMode: item.applyScanMode,
-                    bwMode: item.bwMode,
-                    isLut: false
-                )
-            }
-        )
-        
-        
-        
-        
-        // Convert to logC
-        result = result.Lin2LogC()
-        
-        
-        // RawContrastNode
-        result = applyNodeWithMasks(
-            baseImage: result,
-            item: item,
-            nodeType: "RawContrastNode",
-            globalNode: RawContrastNode(contrast: item.contrast),
-            maskBuilder: { mask in
-                RawContrastNode(contrast: mask.contrast)
-            }
-        )
-        
-        
-        // Convert to spherical
-        result = result.RGBtoSpherical()
-        
-        
-        // GlobalSaturationNode
-        result = applyNodeWithMasks(
-            baseImage: result,
-            item: item,
-            nodeType: "GlobalSaturationNode",
-            globalNode: GlobalSaturationNode(saturation: item.saturation),
-            maskBuilder: { mask in
-                GlobalSaturationNode(saturation: mask.saturation)
-            }
-        )
-        
-        
-        // Convert to RGB
-        result = result.SphericaltoRGB()
-        
-        //		debugSave(result, "not scaled")
-        //		let scaledDebug = result.downAndUp(0.71)
-        //		debugSave(scaledDebug, "scaled")
-        //
-        
-        // HDRNode
-        result = applyNodeWithMasks(
-            baseImage: result,
-            item: item,
-            nodeType: "HDRNode",
-            globalNode: HDRNode(
-                hdrWhite: item.hdrWhite,
-                hdrHighlight: item.hdrHighlight,
-                hdrShadow: item.hdrShadow,
-                hdrBlack: item.hdrBlack
-            ),
-            maskBuilder: { mask in
-                HDRNode(
-                    hdrWhite: mask.hdrWhite,
-                    hdrHighlight: mask.hdrHighlight,
-                    hdrShadow: mask.hdrShadow,
-                    hdrBlack: mask.hdrBlack
-                )
-            }
-        )
-        
-        
-        // Convert to spherical
-        result = result.RGBtoSpherical()
-        
-        
-        
-        // HueSaturationDensityNode
-        result = applyNodeWithMasks(
-            baseImage: result,
-            item: item,
-            nodeType: "HueSaturationDensityNode",
-            globalNode: HueSaturationDensityNode(
-                redHue: item.redHue, redSat: item.redSat, redDen: item.redDen,
-                greenHue: item.greenHue, greenSat: item.greenSat, greenDen: item.greenDen,
-                blueHue: item.blueHue, blueSat: item.blueSat, blueDen: item.blueDen,
-                cyanHue: item.cyanHue, cyanSat: item.cyanSat, cyanDen: item.cyanDen,
-                magentaHue: item.magentaHue, magentaSat: item.magentaSat, magentaDen: item.magentaDen,
-                yellowHue: item.yellowHue, yellowSat: item.yellowSat, yellowDen: item.yellowDen
-            ),
-            maskBuilder: { mask in
-                HueSaturationDensityNode(
-                    redHue: mask.redHue, redSat: mask.redSat, redDen: mask.redDen,
-                    greenHue: mask.greenHue, greenSat: mask.greenSat, greenDen: mask.greenDen,
-                    blueHue: mask.blueHue, blueSat: mask.blueSat, blueDen: mask.blueDen,
-                    cyanHue: mask.cyanHue, cyanSat: mask.cyanSat, cyanDen: mask.cyanDen,
-                    magentaHue: mask.magentaHue, magentaSat: mask.magentaSat, magentaDen: mask.magentaDen,
-                    yellowHue: mask.yellowHue, yellowSat: mask.yellowSat, yellowDen: mask.yellowDen
-                )
-            }
-        )
-        
-        // Convert to RGB
-        result = result.SphericaltoRGB()
-        
-        
-        
-        // THOG NODE
-        var thogResult = result
-        thogResult = THOGNode(applyTHOG: item.applyTHOG, isExport: isExport, blend: item.blend, variance: item.variance, scale: item.scale).apply(to: result)
-        
-        
-        // Convert to neg gamma 2.2
-        result = result.cineonToNeg()
-        result = result.encodeGamma22()
-        
-        // MTFCurveNode
-        let nativeLongEdge = max(item.nativeWidth, item.nativeHeight)
-        result = MTFCurveNode(
-            applyMTF: item.applyMTF,
-            mtfAmount: item.mtfBlend,
-            format: item.selectedGateWidth,
-            applyGrain: item.applyGrain,
-            exportMode: isExport,
-            nativeLongEdge: nativeLongEdge,
-            isExport: isExport
-        ).apply(to: result)
-        
-        // Convert back
-        result = result.decodeGamma22()
-        result = result.negToCineon()
-        
-        
-        result = RealisticFilmGrainNode(
-            applyGrain: item.applyGrain,
-            isExport: isExport,
-            grain54_low: item.grain54_low,
-            grain54_high: item.grain54_high,
-            grain60mm_low: item.grain60mm_low,
-            grain60mm_high: item.grain60mm_high,
-            grain53mm_low: item.grain53mm_low,
-            grain53mm_high: item.grain53mm_high,
-            grain36mm_low: item.grain36mm_low,
-            grain36mm_high: item.grain36mm_high,
-            grain25mm_low: item.grain25mm_low,
-            grain25mm_high: item.grain25mm_high,
-            grain21mm_low: item.grain21mm_low,
-            grain21mm_high: item.grain21mm_high,
-            grain18mm_low: item.grain18mm_low,
-            grain18mm_high: item.grain18mm_high,
-            grain10mm_low: item.grain10mm_low,
-            grain10mm_high: item.grain10mm_high,
-            grain5mm_low: item.grain5mm_low,
-            grain5mm_high: item.grain5mm_high,
-            grain6mm_low: item.grain6mm_low,
-            grain6mm_high: item.grain6mm_high,
-            gateWidth: item.selectedGateWidth,
-            amount: item.grainAmount
-        ).apply(to: result)
-        
-        // FilmStockNode
-        result = FilmStockNode(
-            stockChoice: item.stockChoice,
-            convertToNeg: item.convertToNeg
-        ).apply(to: result)
-        
-        // DecodeNegativeNode
-        result = DecodeNegativeNode(
-            convertToNeg: item.convertToNeg,
-            applyScanMode: item.applyScanMode,
-            stockChoice: item.stockChoice
-        ).apply(to: result)
-        
-        //        // MTFCurveNode
-        //        let nativeLongEdge = max(item.nativeWidth, item.nativeHeight)
-        //        result = MTFCurveNode(
-        //            applyMTF: item.applyMTF,
-        //            mtfAmount: item.mtfBlend,
-        //            format: item.selectedGateWidth,
-        //            applyGrain: item.applyGrain,
-        //            exportMode: isExport,
-        //            nativeLongEdge: nativeLongEdge,
-        //            isExport: isExport
-        //        ).apply(to: result)
-        
-        
-        
-        
-        if item.applyTHOG {
-            result = thogResult
-        }
-        result = PaperNode(
-            convertToNeg: item.convertToNeg,
-            showPaperMask: item.showPaperMask,
-            imageScale: item.borderImgScale,
-            maskScale: item.borderScale,
-            maskXshift: item.borderXshift,
-            maskYshift: item.borderYshift
-        ).apply(to: result)
-        
-        if item.applyTHOG {
-            thogResult = result
-        }
-        
-        
-        // OffsetNode (can be made maskable later if needed)
-        let offsetNode = OffsetNode(
-            applyScanMode: item.applyScanMode,
-            offsetRGB: item.offsetRGB,
-            offsetRed: item.offsetRed,
-            offsetGreen: item.offsetGreen,
-            offsetBlue: item.offsetBlue
-        )
-        result = offsetNode.apply(to: result)
-        
-        // Kodak2383Node
-        result = Kodak2383Node(
-            blend: item.lutBlend,
-            applyScanMode: item.applyScanMode,
-            applyPFE: item.applyPFE
-        ).apply(to: result)
-        
-        
-        // ScanContrastNode
-        let scanContrastNode = ScanContrastNode(
-            applyScanMode: item.applyScanMode,
-            scanContrast: item.scanContrast
-        )
-        result = scanContrastNode.apply(to: result)
-        
-        
-        // EnlargerV2Node
-        let (image) = EnlargerV2Node(
-            applyPrintMode: item.applyPrintMode,
-            convertToNeg: item.convertToNeg,
-            evSeconds: item.enlargerExp,
-            fstop: item.enlargerFStop,
-            cyan: item.cyan,
-            magenta: item.magenta,
-            yellow: item.yellow,
-            bwMode: item.bwMode,
-            useLegacy: false
-        ).apply(to: result)
-        
-        result = image
-        
-        // EnlargerV2Node (maskable)
-        result = applyEnlargerV2MaskNodeWithMasks(
-            baseImage: result,
-            item: item
-        )
-        
-        
-        
-        // PrintHalationNode (maskable)
-        result = applyNodeWithMasks(
-            baseImage: result,
-            item: item,
-            nodeType: "PrintHalationNode",
-            globalNode: PrintHalationNode(
-                printHalation_size: item.printHalation_size,
-                printHalation_amount: item.printHalation_amount,
-                printHalation_darkenMode: item.printHalation_darkenMode,
-                printHalation_apply: item.printHalation_apply,
-                isExport: item.isExport
-            ),
-            maskBuilder: { mask in
-                PrintHalationNode(
-                    printHalation_size: mask.printHalation_size,
-                    printHalation_amount: mask.printHalation_amount,
-                    printHalation_darkenMode: mask.printHalation_darkenMode,
-                    printHalation_apply: item.printHalation_apply,
-                    isExport: item.isExport
-                )
-            }
-        )
-        
-        
-        // LegacyEnlargerNode (maskable)
-        result = applyNodeWithMasks(
-            baseImage: result,
-            item: item,
-            nodeType: "LegacyEnlargerNode",
-            globalNode: LegacyEnlargerNode(
-                applyPrintMode: item.applyPrintMode,
-                convertToNeg: item.convertToNeg,
-                evSeconds: item.legacyExposure,
-                cyan: item.legacyCyan,
-                magenta: item.legacyMagenta,
-                yellow: item.legacyYellow,
-                bwMode: item.bwMode,
-                stockChoice: item.stockChoice,
-                useLegacy: item.useLegacy
-            ),
-            maskBuilder: { mask in
-                LegacyEnlargerNode(
-                    applyPrintMode: item.applyPrintMode,
-                    convertToNeg: item.convertToNeg,
-                    evSeconds: mask.legacyExposure,
-                    cyan: mask.legacyCyan,
-                    magenta: mask.legacyMagenta,
-                    yellow: mask.legacyYellow,
-                    bwMode: item.bwMode,
-                    stockChoice: item.stockChoice,
-                    useLegacy: item.useLegacy
-                )
-            }
-        )
-        
-        // LegacyPrintCurveAndGamutNode
-        result = LegacyPrintCurveAndGamutNode(
-            bwMode: item.bwMode,
-            convertToNeg: item.convertToNeg,
-            applyPrintMode: item.applyPrintMode,
-            stockChoice: item.stockChoice,
-            useLegacy: item.useLegacy
-        ).apply(to: result)
-        
-        
-        
-        var flash = result
-        var flashPreview = result
-        
-        if item.previewFlash {
-            flashPreview = FlashNode(
-                applyPrintMode: item.applyPrintMode,
-                previewFlash: item.previewFlash,
-                applyFlash: item.applyFlash,
-                flashEV: item.flashEV,
-                flashFStop: item.flashFStop,
-                flashCyan: item.flashCyan,
-                flashMagenta: item.flashMagenta,
-                flashYellow: item.flashYellow,
-                hand: handImage).apply(to: result)
-            
-        } else {
-            flash = FlashNode(
-                applyPrintMode: item.applyPrintMode,
-                previewFlash: item.previewFlash,
-                applyFlash: item.applyFlash,
-                flashEV: item.flashEV,
-                flashFStop: item.flashFStop,
-                flashCyan: item.flashCyan,
-                flashMagenta: item.flashMagenta,
-                flashYellow: item.flashYellow,
-                hand: handImage).apply(to: result)
-        }
-        
-        
-        // PrintGamutNode
-        result = PrintGamutNode(
-            convertToNeg: item.convertToNeg,
-            applyPrintMode: item.applyPrintMode,
-            bwMode: item.bwMode,
-            useLegacy: item.useLegacy,
-            applyFlash: item.applyFlash,
-            flash: flash
-        ).apply(to: result)
-        
-        // BlackAndWhiteEnlargerNode (maskable)
-        result = applyNodeWithMasks(
-            baseImage: result,
-            item: item,
-            nodeType: "BlackAndWhiteEnlargerNode",
-            globalNode: BlackAndWhiteEnlargerNode(
-                applyPrintMode: item.applyPrintMode,
-                convertToNeg: item.convertToNeg,
-                evSeconds: item.enlargerExp,
-                fstop: item.enlargerFStop,
-                magenta: item.magenta,
-                bwMode: item.bwMode,
-                useLegacy: item.useLegacy
-            ),
-            maskBuilder: { mask in
-                BlackAndWhiteEnlargerNode(
-                    applyPrintMode: item.applyPrintMode,
-                    convertToNeg: item.convertToNeg,
-                    evSeconds: mask.enlargerExp,
-                    fstop: mask.enlargerFStop,
-                    magenta: mask.magenta,
-                    bwMode: item.bwMode,
-                    useLegacy: item.useLegacy
-                )
-            }
-        )
-        
-        //        if viewModel.debugMode {
-        //
-        //            // GrainV3Node
-        //            result = GrainV3Node(
-        //                amount: item.grainAmount,
-        //                applyGrain: item.applyGrain,
-        //                applyMTF: item.applyMTF,
-        //                format: item.selectedGateWidth,
-        //                exportMode: isExport // Set this to true if running in export context
-        //            ).apply(to: grainRamp)
-        //
-        //
-        //        }
-        
-        
-        // ApplyAdobeCameraRawCurveNode
-        result = ApplyAdobeCameraRawCurveNode(
-            convertToNeg: item.convertToNeg
-        ).apply(to: result)
-        
-        //		result = RealisticFilmGrainNode().apply(to: result)
-        
-        
-        //        result = AddPaperBlackNode().apply(to: result)
-        
-        //        if viewModel.debugMode {
-        //
-        //            // GrainV3Node
-        //            result = GrainV3Node(
-        //                amount: item.grainAmount,
-        //                applyGrain: item.applyGrain,
-        //                applyMTF: item.applyMTF,
-        //                format: item.selectedGateWidth,
-        //                exportMode: isExport // Set this to true if running in export context
-        //            ).apply(to: grainRamp)
-        //
-        //        }
-        
-        
-        
-        
-        if item.applyTHOG {
-            
-            result = thogResult
-            
-        }
-        
-        let finalFlash = flashPreview
-        
-        let finalImage = result
-        
-        
-        
-        if !isExport {
-            
-            if item.previewFlash {
-                
-                await MainActor.run {
-                    ImageViewModel.shared.imageToRender = finalFlash
-                    
-                    if let renderer = RenderingManager.shared.renderer {
-                        renderer.updateImage(finalFlash)
-                    } else {
-                        print("No renderer to send result to")
-                    }
+        lastThumbnailRenderTime = now
+
+        DispatchQueue.global(qos: .userInitiated).async {
+
+            let nsImage = image.convertToNSImageSync()
+
+            DispatchQueue.main.async {
+                dataModel.updateItem(id: id) { item in
+                    item.previewImage = nsImage
                 }
                 
-            } else {
-                
-                await MainActor.run {
-                    self.processedImage = finalImage
-                    self.currentResult = finalImage
-                    var thumbResult = finalImage
-                    
-                    ImageViewModel.shared.renderSumbitted.toggle()
-                    ImageViewModel.shared.imageToRender = finalImage
-                    
-                    if viewModel.imageViewActive {
-                        
-                        if let renderer = RenderingManager.shared.renderer {
-                            renderer.updateImage(finalImage)
-                        } else {
-                            print("No renderer to send result to")
-                        }
-                        thumbResult = finalImage.transformed(by: CGAffineTransform(scaleX: 0.3, y: 0.3))
-                    }
-                    
-                    //					let thumbCached = thumbResult.insertingIntermediate(cache: true)
-                    
-                    dataModel.updateItem(id: id) { item in
-                        item.thumbCIImage = thumbResult
-                    }
-                    
-                    //					renderThumbs(dataModel, thumbCached)
-                    
-                }
-            }
-        } else {
-            if let url = destinationUrl {
-                //                saveImage(finalImage, item.url, url)
-                isExport = false
+                ImageViewModel.shared.currentPreview = nsImage
             }
         }
     }
     
+    
+ 
 
     
     public var destinationUrl: URL?
     
     
-    // Unwrap async
-    func unwrapAndReturnImages( _ item: ImageItem) async -> CIImage? {
-        guard let displayImage = item.debayeredInit else { return nil }
-        guard let highRes = item.debayeredFull else { return nil }
-        guard let thumb = item.debayeredThumb else {return nil}
-        
-        let viewModel = ImageViewModel.shared
-        let isZoomed = viewModel.isZoomed
-        let rect = viewModel.zoomRect
-        
-        if isZoomed, rect.width > 0, rect.height > 0, highRes.extent.contains(rect) {
-            let zoomed = highRes.cropped(to: rect)
-            let translated = zoomed.transformed(by: .init(
-                translationX: -rect.origin.x,
-                y: -rect.origin.y
-            ))
-            return translated
-        } else if isExport {
-            
-            return highRes
-            
-        } else if !viewModel.imageViewActive {
-            return thumb
-        } else {
-            return displayImage
-        }
-    }
+
     
     func unwrapAndReturnImagesSync( _ item: ImageItem, _ dataModel: DataModel) -> CIImage? {
         
@@ -1871,11 +1411,16 @@ class FilterPipeline: ObservableObject {
 
             }
         } else {
-            guard let debayeredBuffer = item.debayeredBuffer else {return nil}
-            
-            let displayImage = CIImage(cvPixelBuffer: debayeredBuffer)
-            
-            return displayImage
+            if let debayeredBuffer = item.debayeredBuffer {
+                
+                let displayImage = CIImage(cvPixelBuffer: debayeredBuffer)
+                
+                return displayImage
+                
+            } else {
+                let ciImage = item.debayeredInit
+                return ciImage
+            }
         }
         return nil
     }
@@ -1918,24 +1463,7 @@ extension FilterPipeline {
         }
         
         for id in selectedIDs {
-            await applyPipelineV2(id, dataModel)
+             applyPipelineV2Sync(id, dataModel)
         }
     }
 }
-
-
-//extension FilterPipeline {
-//	func applyPipelineForSelectedItems(_ dataModel: DataModel) async {
-//		let selectedIDs = ThumbnailViewModel.shared.selectedIDs
-//
-//		guard !selectedIDs.isEmpty else { return }
-//
-//		await withTaskGroup(of: Void.self) { group in
-//			for id in selectedIDs {
-//				group.addTask {
-//					await self.applyPipelineV2(id, dataModel)
-//				}
-//			}
-//		}
-//	}
-//}

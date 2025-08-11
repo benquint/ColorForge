@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		843FA1502E14EB3D000E5F31 /* ImageItemOld.swift in Sources */ = {isa = PBXBuildFile; fileRef = 843FA14F2E14EB3D000E5F31 /* ImageItemOld.swift */; };
 		847245372E1BB9A4003C4A70 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 847245362E1BB9A4003C4A70 /* KeyboardShortcuts */; };
 		848157B12E3A1EC1003965FA /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = 848157B02E3A1EC1003965FA /* ArgumentParser */; };
 		848157CC2E3A3E8B003965FA /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = 848157CB2E3A3E8B003965FA /* ArgumentParser */; };
@@ -27,7 +26,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		843FA14F2E14EB3D000E5F31 /* ImageItemOld.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageItemOld.swift; sourceTree = "<group>"; };
 		848157B62E3A212E003965FA /* sam2-cli */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "sam2-cli"; sourceTree = BUILT_PRODUCTS_DIR; };
 		84C6790F2E3A8D7B00BB822E /* CMS_arri.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = CMS_arri.png; sourceTree = "<group>"; };
 		84E8BE952DE5D011006F2C2F /* ColorForge.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = ColorForge.xctestplan; sourceTree = "<group>"; };
@@ -56,10 +54,10 @@
 			membershipExceptions = (
 				Filters/Nodes/LoadingModel.swift,
 				Filters/Nodes/ToAdapt.swift,
-				Filters/pipelineoldorder.swift,
 				Info.plist,
 				"Views/BottomBarView 2.swift",
 				Views/ImageViews/MainImageView/ImageViewSAM.swift,
+				Views/Masking/MaskIcons.swift,
 				Views/SidebarViewOld.swift,
 			);
 			target = 987BF2482DDDECC7005EF497 /* ColorForge */;
@@ -114,7 +112,6 @@
 		987BF2402DDDECC7005EF497 = {
 			isa = PBXGroup;
 			children = (
-				843FA14F2E14EB3D000E5F31 /* ImageItemOld.swift */,
 				84C6790F2E3A8D7B00BB822E /* CMS_arri.png */,
 				84E8BE952DE5D011006F2C2F /* ColorForge.xctestplan */,
 				987BF24B2DDDECC7005EF497 /* ColorForge */,
@@ -248,7 +245,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				843FA1502E14EB3D000E5F31 /* ImageItemOld.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -261,7 +257,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = MH3K548CJL;
 				ENABLE_HARDENED_RUNTIME = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 			};
@@ -273,7 +269,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = MH3K548CJL;
 				ENABLE_HARDENED_RUNTIME = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 			};
@@ -333,7 +329,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.2;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -391,7 +387,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.2;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -408,10 +404,11 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MH3K548CJL;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				EXCLUDED_ARCHS = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ColorForge/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -419,8 +416,8 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.2;
-				MARKETING_VERSION = 0.1;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.2;
 				MTLLINKER_FLAGS = "-fcikernel";
 				MTL_COMPILER_FLAGS = "-fcikernel";
 				PRODUCT_BUNDLE_IDENTIFIER = BenQuinton.ColorForge;
@@ -440,10 +437,12 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MH3K548CJL;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				EXCLUDED_ARCHS = "";
+				"EXCLUDED_ARCHS[sdk=*]" = x86_64;
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ColorForge/Info.plist;
@@ -452,8 +451,8 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.2;
-				MARKETING_VERSION = 0.1;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.2;
 				MTLLINKER_FLAGS = "-fcikernel";
 				MTL_COMPILER_FLAGS = "-fcikernel";
 				PRODUCT_BUNDLE_IDENTIFIER = BenQuinton.ColorForge;

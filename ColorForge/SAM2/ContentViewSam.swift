@@ -104,6 +104,7 @@ struct SegmentationOverlayV2: View {
 
     
     var body: some View {
+        
         if let cgImage = samModel.currentMaskCG {
             
             let nsImage = NSImage(cgImage: cgImage, size: imageSize)
@@ -113,7 +114,7 @@ struct SegmentationOverlayV2: View {
                 .scaledToFit()
                 .allowsHitTesting(false)
                 .frame(width: imageSize.width, height: imageSize.height)
-                .opacity(0.8)
+                .opacity(samModel.showSamMask ? 0.8 : 0.0)
         }
     }
 

@@ -47,12 +47,12 @@ struct HistogramView: View {
     }
     
     var body: some View {
-        CollapsibleSectionViewNoReset(
-            title: "Histogram:",
+        SubSectionHistogram(
+            title: "Histogram",
             isCollapsed: $isCollapsed,
             content: {
                 // MARK: - Histogram Overlay
-                VStack(spacing: 10) {
+                VStack() {
 
                     if !data.isEmpty {
                         Chart(data) {

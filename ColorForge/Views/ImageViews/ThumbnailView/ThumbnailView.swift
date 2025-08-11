@@ -38,8 +38,8 @@ struct ThumbnailView: View {
         
         GeometryReader { geo in
             
-            let paddingPoints = viewModel.padding / CGFloat(backingScaleFactor)
-            let totalPadding = (CGFloat(viewModel.colCount) * paddingPoints) + paddingPoints
+            
+            let totalPadding = (CGFloat(viewModel.colCount) * viewModel.padding) + viewModel.padding
             let cellSize = (geo.size.width - totalPadding) / CGFloat(viewModel.colCount)
             
             
@@ -102,7 +102,7 @@ struct ThumbnailView: View {
                             }
                         }
                     }
-                    .padding(paddingPoints)
+                    .padding(viewModel.padding)
                 }
                 
                 .onAppear {

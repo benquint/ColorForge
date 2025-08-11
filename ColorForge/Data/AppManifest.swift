@@ -26,12 +26,16 @@ struct ImageManifest: Codable, Equatable {
     let imageURL: URL               // Original image file
     let settingsURL: URL           // JSON for SavedImageItem
     let previewURL: URL?           // Optional preview (e.g. cached thumbnail or JPEG)
+    let masks: [MaskManifest]
     
     static func == (lhs: ImageManifest, rhs: ImageManifest) -> Bool {
         lhs.imageURL == rhs.imageURL
     }
 }
 
+struct MaskManifest: Codable {
+    let maskURL: URL
+}
 
 
 class AppDataManager {
@@ -43,6 +47,7 @@ class AppDataManager {
     let registryURL: URL
     let settingsFolder: URL
     let imageCacheFolder: URL
+    let maskCacheFolder: URL
 
     private(set) var manifest: Manifest
 
@@ -61,6 +66,7 @@ class AppDataManager {
         let imageDataFolder = appFolder.appendingPathComponent("ImageData")
         let settingsFolder = imageDataFolder.appendingPathComponent("Settings")
         let imageCacheFolder = imageDataFolder.appendingPathComponent("ImageCache")
+        let maskCacheFolder = imageDataFolder.appendingPathComponent("MaskCache")
 
         // Step 3: Create folders only if needed
         if !fileManager.fileExists(atPath: appDataFolder.path) {
@@ -74,13 +80,18 @@ class AppDataManager {
         if !fileManager.fileExists(atPath: imageCacheFolder.path) {
             try? fileManager.createDirectory(at: imageCacheFolder, withIntermediateDirectories: true)
         }
+        
+        if !fileManager.fileExists(atPath: maskCacheFolder.path) {
+            try? fileManager.createDirectory(at: maskCacheFolder, withIntermediateDirectories: true)
+        }
 
         // Step 4: Store persistent folder locations
         self.baseDirectory = appDataFolder
         self.registryURL = appDataFolder.appendingPathComponent("manifest.json")
         self.settingsFolder = settingsFolder
         self.imageCacheFolder = imageCacheFolder
-
+        self.maskCacheFolder = maskCacheFolder
+        
         // Step 5: Load or create manifest
         if fileManager.fileExists(atPath: registryURL.path) {
             do {

@@ -281,7 +281,7 @@ extension CIImage {
 		let kernel = CIColorKernelCache.shared.encodeLogC
 		return kernel.apply(
 			extent: self.extent,
-			roiCallback: { _, rect in rect },
+			roiCallback: { $1 },
 			arguments: [self]
 		) ?? self
 	}
@@ -290,7 +290,7 @@ extension CIImage {
 		let kernel = CIColorKernelCache.shared.decodeLogC
 		return kernel.apply(
 			extent: self.extent,
-			roiCallback: { _, rect in rect },
+			roiCallback: { $1 },
 			arguments: [self]
 		) ?? self
 	}

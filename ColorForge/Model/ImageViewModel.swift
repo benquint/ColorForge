@@ -13,8 +13,20 @@ class ImageViewModel: ObservableObject {
     static let shared = ImageViewModel()
 
     var currentImgID: UUID?
+    @Published var processingFullyComplete: Bool = false
 	
-	
+    // Temp
+    @Published var downAndUpScale: CGFloat = 1.0 {
+        didSet {
+            if let id = currentImgID {
+                let pipeline = FilterPipeline.shared
+                let dataModel = DataModel.shared
+                
+                pipeline.applyPipelineV2Sync(id, dataModel)
+            }
+        }
+    }
+
 	// MARK: - RadialGradient View Properties
 	@Published var radialUiStart: CGPoint = .zero
 	@Published var radialUiEnd: CGPoint = .zero

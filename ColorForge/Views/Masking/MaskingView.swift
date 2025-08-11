@@ -24,6 +24,8 @@ struct MaskingView: View {
     @Binding var LinearStartPointBinding: CGPoint
     @Binding var LinearEndPointBinding: CGPoint
 
+    @Binding var aiMaskImageBinding: CIImage?
+    
     // Radial mask bindings
     @Binding var radialStartPointBinding: CGPoint
     @Binding var radialEndPointBinding: CGPoint
@@ -38,6 +40,10 @@ struct MaskingView: View {
     @Binding var mainApplyPrint: Bool
 	
     @Binding var selectedTool: SAMTool?
+    
+    @Binding var aiFeatherBinding: Float
+    @Binding var aiOpacityBinding: Float
+    @Binding var aiInvertBinding: Bool
 	
 	// MARK: - BODY
 	
@@ -46,29 +52,30 @@ struct MaskingView: View {
 		
 		
 			
-			VStack(alignment: .leading, spacing: 0) {
+			VStack() {
 				
 				// MARK: - Icons HStack
 				
-                MaskIcons(
-                    selectedMask: $selectedMask,
-                    LinearStartPointBinding: $LinearStartPointBinding,
-                    LinearEndPointBinding: $LinearEndPointBinding,
-
-                    radialStartPointBinding: $radialStartPointBinding,
-                    radialEndPointBinding: $radialEndPointBinding,
-                    radialFeatherBinding: $radialFeatherBinding,
-                    radialWidthBinding: $radialWidthBinding,
-                    radialHeightBinding: $radialHeightBinding,
-                    radialRotationBinding: $radialRotationBinding,
-                    radialInvertBinding: $radialInvertBinding,
-                    radialOpacityBinding: $radialOpacityBinding
-                )
+//                MaskIcons(
+//                    selectedMask: $selectedMask,
+//                    LinearStartPointBinding: $LinearStartPointBinding,
+//                    LinearEndPointBinding: $LinearEndPointBinding,
+//
+//                    radialStartPointBinding: $radialStartPointBinding,
+//                    radialEndPointBinding: $radialEndPointBinding,
+//                    radialFeatherBinding: $radialFeatherBinding,
+//                    radialWidthBinding: $radialWidthBinding,
+//                    radialHeightBinding: $radialHeightBinding,
+//                    radialRotationBinding: $radialRotationBinding,
+//                    radialInvertBinding: $radialInvertBinding,
+//                    radialOpacityBinding: $radialOpacityBinding
+//                )
 				
 				
-				Divider().overlay(Color("MenuAccent"))
+//				Divider().overlay(Color("MenuAccent"))
 				
                 MaskInfoView(
+                    aiMaskImageBinding: $aiMaskImageBinding,
                     selectedMask: $selectedMask,
                     LinearStartPointBinding: $LinearStartPointBinding,
                     LinearEndPointBinding: $LinearEndPointBinding,
@@ -82,7 +89,11 @@ struct MaskingView: View {
                     radialInvertBinding: $radialInvertBinding,
                     radialOpacityBinding: $radialOpacityBinding,
                     
-                    selectedTool: $selectedTool
+                    selectedTool: $selectedTool,
+                    
+                    aiFeatherBinding: $aiFeatherBinding,
+                    aiOpacityBinding: $aiOpacityBinding,
+                    aiInvertBinding: $aiInvertBinding
                 )
 				
 				
@@ -181,7 +192,7 @@ struct MaskingView: View {
 				
 				
 			}
-			.frame(maxWidth: .infinity, maxHeight: .infinity)
+//			.frame(maxWidth: .infinity, maxHeight: .infinity)
 			.onAppear {
                 selectedMask = nil
                 viewModel.showMaskPoints = true

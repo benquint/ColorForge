@@ -310,7 +310,7 @@ struct EnlargerV2MaskNode: FilterNode {
 			let magentaCC: Float = pow(10.0, -((magentaDensity / 0.002 - 95.0) / (1023.0 / g_dmax)))
 			let yellowCC: Float = pow(10.0, -((yellowDensity / 0.002 - 95.0) / (1023.0 / b_dmax)))
 			
-			print(String(format: "🔧 MASK EV: %.3f | Cyan CC: %.5f | Magenta CC: %.5f | Yellow CC: %.5f", ev, cyanCC, magentaCC, yellowCC))
+	
 			
 			let kernel = CIColorKernelCache.shared.enlargerV2Masked
 			let result = kernel.apply(
@@ -469,6 +469,7 @@ struct BlackAndWhiteEnlargerNode: FilterNode {
 struct PaperSoftenNode: FilterNode {
 	let applyPrintMode: Bool
 	let convertToNeg: Bool
+    
 	
 	func apply(to input: CIImage) -> CIImage {
 		if !convertToNeg { return input }

@@ -26,6 +26,8 @@ struct ImageView: View {
 	@Binding var selectedMask: UUID?
 	@Binding var LinearStartPointBinding: CGPoint
 	@Binding var LinearEndPointBinding: CGPoint
+    
+    @Binding var aiMaskImageBinding: CIImage?
 	
     // Radial mask bindings
     @Binding var radialStartPointBinding: CGPoint
@@ -60,7 +62,7 @@ struct ImageView: View {
                 if viewModel.sam2MaskMode {
                     
                     SamView(viewWidth: geo.size.width, viewHeight: geo.size.height,
-                            selectedTool: $selectedTool)
+                            selectedTool: $selectedTool,  aiMaskImageBinding: $aiMaskImageBinding)
                     
                 } else {
                     

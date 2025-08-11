@@ -110,6 +110,8 @@ class DataModel: ObservableObject {
 
                 // Step 2: Create new ImageItems for the rest
                 let newItems = try await createStructs(from: newURLs)
+                
+//                await extractThumbs(newItems)
 
                 // Step 3: Combine everything locally
                 let allItems = restoredItems + newItems
@@ -121,25 +123,68 @@ class DataModel: ObservableObject {
 
                 // Step 5: Continue with processing
                 await self.getMetaData(allItems)
+				
+				await MainActor.run {
+					self.thumbsFullyLoaded = true
+					self.loading = false
+					ImageViewModel.shared.processingComplete = true
+				}
 
                 await withTaskGroup(of: Void.self) { group in
-                    group.addTask(priority: .userInitiated) {
-                        await MainActor.run {
-                            self.thumbsFullyLoaded = true
-                            self.loading = false
-                            ImageViewModel.shared.processingComplete = true
-                        }
-                    }
+//                    group.addTask(priority: .userInitiated) {
+//                        await MainActor.run {
+//                            self.thumbsFullyLoaded = true
+//                            self.loading = false
+//                            ImageViewModel.shared.processingComplete = true
+//                        }
+//                    }
 
                     group.addTask(priority: .userInitiated) {
                         await self.debayerInit(for: allItems)
                     }
                 }
+                
+                await MainActor.run {
+                    ImageViewModel.shared.processingFullyComplete = true
+                }
 
-                await debayerHRBatchInit(for: allItems)
+//                await debayerHRBatchInit(for: allItems)
 
             } catch {
                 print("Failed to load images: \(error)")
+            }
+        }
+    }
+    
+    
+    // MARK: -
+    
+    private func extractThumbs(_ items: [ImageItem]) async {
+        for item in items {
+            
+            let id = item.id
+            let url = item.url
+            
+            let options: [CFString: Any] = [
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: 500,
+                kCGImageSourceShouldCache: false,
+                kCGImageSourceShouldCacheImmediately: false
+            ]
+            
+            guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+                  let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+                print("❌ Failed to extract thumbnail for \(url)")
+                continue
+            }
+
+                
+            await MainActor.run{
+                let previewImage = NSImage(cgImage: cgImage, size: .zero)
+                
+                self.updateItem(id: id) {item in
+                    item.thumbnailImage = previewImage
+                }
             }
         }
     }
@@ -436,8 +481,6 @@ class DataModel: ObservableObject {
                             continue
                         }
                         
-                        await self.processRawsV3(item, buffer, context)
-
                         await MainActor.run {
                             self.updateItem(id: id) { item in
                                 item.debayeredBuffer = buffer
@@ -449,6 +492,25 @@ class DataModel: ObservableObject {
                                 item.initTint = tint
                                 item.baselineExposure = baseline
                             }
+                        }
+                            
+                            
+                            
+                            
+                        
+                        print("""
+                            
+                            Buffer complete for \(item.url.lastPathComponent)
+                            
+                            """)
+                        
+                        await self.processRawsV3(item, buffer, context)
+
+                        await MainActor.run {
+                            print("""
+                                
+                                Processing complete for \(item.url.lastPathComponent)
+                                """)
                         }
                     }
                 }
@@ -498,50 +560,29 @@ class DataModel: ObservableObject {
     func processRawsV3(_ item: ImageItem, _ buffer: CVPixelBuffer, _ context: CIContext) async {
         
         let id = item.id
-        if item.thumbnailImage == nil {
-        var result = CIImage(cvPixelBuffer: buffer)
-            .P3ToAWG()
-            .Lin2LogC()
+        let ciImage = CIImage(cvPixelBuffer: buffer)
         
-        result = ApplyAdobeCameraRawCurveNode(
-            convertToNeg: item.convertToNeg
-        ).apply(to: result)
+        guard let finalImage = FilterPipeline.shared.applyPipelineV2Sync(id, self, ciImage, true) else {return}
         
-        let finalImage = result
-
         
-            guard let thumb = await finalImage.convertThumbToCGImageBatch(context) else {
-                return
-            }
-            
-            await MainActor.run {
-                
-                let size = NSSize(width: thumb.width, height: thumb.height)
-                let nsImage = NSImage(cgImage: thumb, size: size)
-                
-                self.updateItem(id: id) { item in
-                    item.processImage = finalImage
-                    item.thumbnailImage = nsImage
-                }
-            }
-            
-            item.toDisk(finalImage)
-        } else {
-            print("Cached image found, applying pipeline")
-            guard let finalImage = FilterPipeline.shared.applyPipelineV2Sync(id, self) else {return}
-            guard let thumb = await finalImage.convertThumbToCGImageBatch(context) else {return}
-            await MainActor.run {
-                
-                let size = NSSize(width: thumb.width, height: thumb.height)
-                let nsImage = NSImage(cgImage: thumb, size: size)
-                
-                self.updateItem(id: id) { item in
-                    item.processImage = finalImage
-                    item.thumbnailImage = nsImage
-                }
-            }
-            
+        
+        guard let thumb = await finalImage.convertThumbToCGImageBatch(context) else {
+            return
         }
+        
+        await MainActor.run {
+            
+            let size = NSSize(width: thumb.width, height: thumb.height)
+            let nsImage = NSImage(cgImage: thumb, size: size)
+            
+            self.updateItem(id: id) { item in
+                item.processImage = finalImage
+                item.thumbnailImage = nsImage
+            }
+        }
+        
+        item.toDisk(finalImage)
+        
     }
     
 

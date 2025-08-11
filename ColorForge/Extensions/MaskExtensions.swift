@@ -14,6 +14,37 @@ import SwiftUI
 
 
 extension CIImage {
+    
+    
+    func addMask(_ add: CIImage) -> CIImage {
+        let kernel = CIColorKernelCache.shared.addMask
+
+       guard let result = kernel.apply(
+            extent: self.extent,
+            roiCallback: { _, rect in rect },
+            arguments: [self, add]
+        ) else {
+            print("Failed to add masks")
+            return self}
+        
+        return result
+    }
+    
+    
+    func subtractMask(_ subtract: CIImage) -> CIImage {
+        let kernel = CIColorKernelCache.shared.subtractMask
+
+       guard let result = kernel.apply(
+            extent: self.extent,
+            roiCallback: { _, rect in rect },
+            arguments: [self, subtract]
+        ) else {
+            print("Failed to subtract masks")
+            return self}
+        
+        return result
+    }
+    
 
 	func linearGradientExtension(_ start: CGPoint, _ end: CGPoint) -> CIImage {
 		let linearGradient = CIFilter.linearGradient()
@@ -207,6 +238,60 @@ extension CIImage {
         ]).cropped(to: baseImage.extent)
     }
     
+    
+    
+    func applyAiMask( _ mask: CIImage, _ foreground: CIImage, _ soften: Float, _ invert: Bool) -> CIImage {
+        
+        let feather: CGFloat = 10
+        
+        // Inital setup for feathering
+        let targetMax = min(self.extent.width, self.extent.height) / 3.0
+        let featherNorm = (targetMax / 100.0) * CGFloat(feather)
+        var featheredMask = blur(mask, featherNorm)
+        
+        
+        // Blur func
+        func blur(_ src: CIImage, _ amount: CGFloat) -> CIImage {
+            let filter = CIFilter.gaussianBlur()
+            filter.inputImage = src
+            filter.radius = Float(amount)
+            guard let result = filter.outputImage else {
+                fatalError("GuassianBlur extension failed")
+            }
+            return result
+        }
+        
+        
+        // Edge aware setup
+        let radius = feather * 2.0
+        let blurMask = blur(featheredMask, radius)
+        
+        // Pixels for edge aware
+        let bgPixel = self.findAveragePix()
+        var fgPixel = CIImage(color: .clear).cropped(to: self.extent)
+        fgPixel = foreground.composited(over: fgPixel)
+        fgPixel = fgPixel.findAveragePix()
+        
+        let kernel = CIColorKernelCache.shared.edgeAwareFilter
+        
+       guard let result = kernel.apply(
+            extent: self.extent,
+            roiCallback: { $1 },
+            arguments: [self, featheredMask, blurMask, bgPixel, fgPixel]
+        ) else {
+            print("Failed to apply the sigmoid function to mask")
+            return self}
+        
+        
+        debugSave(result, "EdgeAwareResult")
+        
+        
+        if invert {
+            featheredMask = featheredMask.applyingFilter("CIColorInvert")
+        }
+        
+        return self.blendWithMask(featheredMask, foreground)
+    }
 
 
 }

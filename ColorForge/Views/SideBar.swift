@@ -26,6 +26,9 @@ struct SidebarView: View {
     @Binding var LinearStartPointBinding: CGPoint
     @Binding var LinearEndPointBinding: CGPoint
     
+    // ai mask
+    @Binding var aiMaskImageBinding: CIImage?
+    
     // Radial mask bindings
     @Binding var radialStartPointBinding: CGPoint
     @Binding var radialEndPointBinding: CGPoint
@@ -45,6 +48,16 @@ struct SidebarView: View {
     
     @Binding var isRawAdjustCollapsed: Bool
     
+    @Binding var aiFeatherBinding: Float
+    @Binding var aiOpacityBinding: Float
+    @Binding var aiInvertBinding: Bool
+    
+    
+//    @State private var isRawHovered: Bool = false
+//    @State private var isEmulationHovered: Bool = false
+//    @State private var isTextureHovered: Bool = false
+//    @State private var isExportHovered: Bool = false
+    
     
     // MARK: - View Toggle Enum
     
@@ -63,12 +76,12 @@ struct SidebarView: View {
     
     var body: some View {
         
-        VStack {
+        VStack (spacing: 0) {
             
             // Histogram / VectorScope to go here
             HistogramView()
-                .frame(width: viewModel.sideBarWidth)
-                .padding(.horizontal, 25) // or whatever spacing you intended
+//                .frame(width: viewModel.sideBarWidth)
+//                .padding(.horizontal, 25) // or whatever spacing you intended
             
           
             if showCopySettings {
@@ -76,8 +89,8 @@ struct SidebarView: View {
                 
                 
                 CopySettingsView(profile: $profile)
-                    .frame(width: viewModel.sideBarWidth)
-                    .padding(.horizontal, 25) // or whatever spacing you intended
+//                    .frame(width: viewModel.sideBarWidth)
+//                    .padding(.horizontal, 25) // or whatever spacing you intended
             } else {
                 
                 if maskingViewActive{
@@ -88,6 +101,8 @@ struct SidebarView: View {
                         // Linear
                         LinearStartPointBinding: $LinearStartPointBinding,
                         LinearEndPointBinding: $LinearEndPointBinding,
+                        
+                        aiMaskImageBinding: $aiMaskImageBinding,
                         
                         // Radial
                         radialStartPointBinding: $radialStartPointBinding,
@@ -101,7 +116,11 @@ struct SidebarView: View {
                         
                         mainApplyPrint: applyPrintMode,
                         
-                        selectedTool: $selectedTool
+                        selectedTool: $selectedTool,
+                        
+                        aiFeatherBinding: $aiFeatherBinding,
+                        aiOpacityBinding: $aiOpacityBinding,
+                        aiInvertBinding: $aiInvertBinding
                     )
 //                    .frame(width: viewModel.sideBarWidth)
 //                    .padding(.horizontal, 25) // or whatever spacing you intended
@@ -110,8 +129,15 @@ struct SidebarView: View {
                     
                     Divider().overlay(Color("MenuAccent"))
                     
+                    Spacer()
+                        .frame(height: 10)
+                    
                     // MARK: - Select view category
                     HStack {
+                        
+                        Spacer()
+                            .frame(width: 20)
+                        
                         VStack {
                             Button(action: {
                                 shortcut.show(.rawAdjustView)
@@ -135,6 +161,7 @@ struct SidebarView: View {
                         }
                         .padding(10)
                         
+                        Spacer()
                         
                         VStack {
                             Button(action: {
@@ -156,6 +183,7 @@ struct SidebarView: View {
                         }
                         .padding(10)
                         
+                        Spacer()
                         
                         VStack {
                             Button(action: {
@@ -178,7 +206,7 @@ struct SidebarView: View {
                         .padding(10)
                         
                         
-                        
+                        Spacer()
                         
                         VStack {
                             Button(action: {
@@ -201,11 +229,17 @@ struct SidebarView: View {
                                 .foregroundColor(selectedView == .export ? Color("IconActive") : Color("SideBarText"))
                         }
                         .padding(10)
+                        
+                        
+                        Spacer()
+                            .frame(width: 20)
                     }
                     .frame(height: 60) // Increased height to allow space for text
 //                    .frame(width: viewModel.sideBarWidth - 50)
                     
-                    
+                    Spacer()
+                        .frame(height: 10)
+
                     
                     
                     
@@ -213,93 +247,93 @@ struct SidebarView: View {
                     
                     
                     ScrollView(.vertical) {
-                        VStack {
-                            
-                            // Conditional Views
-                            if selectedView == .raw {
-                                RawView(
-                                    temp: temp,
-                                    tint: tint,
-                                    initTemp: initTemp,
-                                    initTint: initTint,
-                                    exposure: exposure,
-                                    contrast: contrast,
-                                    saturation: saturation,
-                                    hdrWhite: hdrWhite,
-                                    hdrHighlight: hdrHighlight,
-                                    hdrShadow: hdrShadow,
-                                    hdrBlack: hdrBlack,
-                                    redHue: redHue,
-                                    redSat: redSat,
-                                    redDen: redDen,
-                                    greenHue: greenHue,
-                                    greenSat: greenSat,
-                                    greenDen: greenDen,
-                                    blueHue: blueHue,
-                                    blueSat: blueSat,
-                                    blueDen: blueDen,
-                                    cyanHue: cyanHue,
-                                    cyanSat: cyanSat,
-                                    cyanDen: cyanDen,
-                                    magentaHue: magentaHue,
-                                    magentaSat: magentaSat,
-                                    magentaDen: magentaDen,
-                                    yellowHue: yellowHue,
-                                    yellowSat: yellowSat,
-                                    yellowDen: yellowDen,
-                                    isRawAdjustCollapsed: $isRawAdjustCollapsed
-                                )
-                            } else if selectedView == .texture {
-                                TextureView(
-                                    applyMTF: applyMTF,
-                                    mtfBlend: mtfBlend,
-                                    applyGrain: applyGrain,
-                                    grainAmount: grainAmount,
-                                    selectedGateWidth: selectedGateWidth,
-                                    scaleGrainToFormat: scaleGrainToFormat,
-                                    printHalation_size: printHalation_size,
-                                    printHalation_amount: printHalation_amount,
-                                    printHalation_darkenMode: printHalation_darkenMode,
-                                    printHalation_apply: printHalation_apply
-                                )
-                            } else if selectedView == .emulation {
-                                EmulationView(
-                                    convertToNeg: convertToNeg,
-                                    stockChoice: stockChoice,
-                                    applyPrintMode: applyPrintMode,
-                                    enlargerExp: enlargerExp,
-                                    enlargerFStop: enlargerFStop,
-                                    bwMode: bwMode,
-                                    cyan: cyan,
-                                    magenta: magenta,
-                                    yellow: yellow,
-                                    applyFlash: applyFlash,
-                                    useLegacy: useLegacy,
-                                    previewFlash: previewFlash,
-                                    flashEV: flashEV,
-                                    flashFStop: flashFStop,
-                                    flashCyan: flashCyan,
-                                    flashMagenta: flashMagenta,
-                                    flashYellow: flashYellow,
+                            VStack {
+                                
+                                // Conditional Views
+                                if selectedView == .raw {
+                                    RawView(
+                                        temp: temp,
+                                        tint: tint,
+                                        initTemp: initTemp,
+                                        initTint: initTint,
+                                        exposure: exposure,
+                                        contrast: contrast,
+                                        saturation: saturation,
+                                        hdrWhite: hdrWhite,
+                                        hdrHighlight: hdrHighlight,
+                                        hdrShadow: hdrShadow,
+                                        hdrBlack: hdrBlack,
+                                        redHue: redHue,
+                                        redSat: redSat,
+                                        redDen: redDen,
+                                        greenHue: greenHue,
+                                        greenSat: greenSat,
+                                        greenDen: greenDen,
+                                        blueHue: blueHue,
+                                        blueSat: blueSat,
+                                        blueDen: blueDen,
+                                        cyanHue: cyanHue,
+                                        cyanSat: cyanSat,
+                                        cyanDen: cyanDen,
+                                        magentaHue: magentaHue,
+                                        magentaSat: magentaSat,
+                                        magentaDen: magentaDen,
+                                        yellowHue: yellowHue,
+                                        yellowSat: yellowSat,
+                                        yellowDen: yellowDen,
+                                        isRawAdjustCollapsed: $isRawAdjustCollapsed
+                                    )
+                                } else if selectedView == .texture {
+                                    TextureView(
+                                        applyMTF: applyMTF,
+                                        mtfBlend: mtfBlend,
+                                        applyGrain: applyGrain,
+                                        grainAmount: grainAmount,
+                                        selectedGateWidth: selectedGateWidth,
+                                        scaleGrainToFormat: scaleGrainToFormat,
+                                        printHalation_size: printHalation_size,
+                                        printHalation_amount: printHalation_amount,
+                                        printHalation_darkenMode: printHalation_darkenMode,
+                                        printHalation_apply: printHalation_apply
+                                    )
+                                } else if selectedView == .emulation {
+                                    EmulationView(
+                                        convertToNeg: convertToNeg,
+                                        stockChoice: stockChoice,
+                                        applyPrintMode: applyPrintMode,
+                                        enlargerExp: enlargerExp,
+                                        enlargerFStop: enlargerFStop,
+                                        bwMode: bwMode,
+                                        cyan: cyan,
+                                        magenta: magenta,
+                                        yellow: yellow,
+                                        applyFlash: applyFlash,
+                                        useLegacy: useLegacy,
+                                        previewFlash: previewFlash,
+                                        flashEV: flashEV,
+                                        flashFStop: flashFStop,
+                                        flashCyan: flashCyan,
+                                        flashMagenta: flashMagenta,
+                                        flashYellow: flashYellow,
+                                        
+                                        applyScanMode: applyScanMode,
+                                        applyPFE: applyPFE,
+                                        apply2383: apply2383,
+                                        apply3513: apply3513,
+                                        offsetRGB: offsetRGB,
+                                        offsetRed: offsetRed,
+                                        offsetGreen: offsetGreen,
+                                        offsetBlue: offsetBlue,
+                                        scanContrast: scanContrast,
+                                        lutBlend: lutBlend
+                                    )
+                                } else if selectedView == .export {
+                                    //                        ExportView()
                                     
-                                    applyScanMode: applyScanMode,
-                                    applyPFE: applyPFE,
-                                    offsetRGB: offsetRGB,
-                                    offsetRed: offsetRed,
-                                    offsetGreen: offsetGreen,
-                                    offsetBlue: offsetBlue,
-                                    scanContrast: scanContrast,
-                                    lutBlend: lutBlend
-                                )
-                            } else if selectedView == .export {
-                                //                        ExportView()
+                                }
                                 
                             }
-                            
                         }
-                    }
-                    .frame(width: viewModel.sideBarWidth)
-                    .padding(.horizontal, 25) // or whatever spacing you intended
                     
                 }
             }
@@ -369,10 +403,6 @@ struct SidebarView: View {
                 //                .keyboardShortcut("r", modifiers: [])
                 
             }
-            // .frame(width: viewModel.sideBarWidth - 50)
-            .padding(.leading, 25)
-            .padding(.trailing, 25)
-            .padding(.bottom, 0)
             
             
             
@@ -380,9 +410,12 @@ struct SidebarView: View {
             
             
         } // End of main VStack
-        .background(Color("MenuBackground"))
+//        .padding(.horizontal, 10)
+        .frame(width: 330)
         .frame(maxHeight: .infinity)
-//        .frame(width: viewModel.sideBarWidth)
+        .background(Color("MenuBackground"))
+//        .border(Color(.red))
+        
         
         
     }
@@ -568,7 +601,7 @@ struct SidebarView: View {
         dataModel.bindingToItem(keyPath: \.printHalation_amount, defaultValue: 50.0)
     }
     private var printHalation_darkenMode: Binding<Bool> {
-        dataModel.bindingToItem(keyPath: \.printHalation_darkenMode, defaultValue: true)
+        dataModel.bindingToItem(keyPath: \.printHalation_darkenMode, defaultValue: false)
     }
     private var printHalation_apply: Binding<Bool> {
         dataModel.bindingToItem(keyPath: \.printHalation_apply, defaultValue: false)
@@ -638,6 +671,12 @@ struct SidebarView: View {
     }
     private var applyPFE: Binding<Bool> {
         dataModel.bindingToItem(keyPath: \.applyPFE, defaultValue: false)
+    }
+    private var apply2383: Binding<Bool> {
+        dataModel.bindingToItem(keyPath: \.apply2383, defaultValue: true)
+    }
+    private var apply3513: Binding<Bool> {
+        dataModel.bindingToItem(keyPath: \.apply3513, defaultValue: false)
     }
     private var offsetRGB: Binding<Float> {
         dataModel.bindingToItem(keyPath: \.offsetRGB, defaultValue: 0.0)

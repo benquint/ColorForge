@@ -67,7 +67,7 @@ struct ImageOverlayView: View {
     // CGPoints used for calculating change in position for linear masks
     @State private var initialCircleStart: CGPoint = .zero
     @State private var initialCircleEnd: CGPoint = .zero
-
+    
     
     // CGPoints used for calculating change in position for radial masks
     @State private var initialRadialStart: CGPoint = .zero
@@ -80,312 +80,318 @@ struct ImageOverlayView: View {
     
     var body: some View {
         
-
+        
+        
+        
+        ZStack {
             
+            // MARK: - Image
             
-            ZStack {
+            let backingScale = NSScreen.main?.backingScaleFactor ?? 1.0
+            
+            if let image = viewModel.currentPreview {
                 
-                // MARK: - Image
+                if !viewModel.rendererInitialisedInUI {
+                    
+                    Image(nsImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .opacity(viewModel.renderingComplete ? 0 : 1)
+                        .frame(width: viewModel.computedSizeForUI.width, height: viewModel.computedSizeForUI.height)
+                        .onAppear{
+                            viewModel.rendererInitialisedInUI = true
+                        }
+                        .onChange(of: image.size) {
+                            
+                        }
+                }
+            } else {
                 
-                let backingScale = NSScreen.main?.backingScaleFactor ?? 1.0
+                Rectangle()
+                    .fill(Color .clear)
+                    .frame(width: viewModel.computedSizeForUI.width, height: viewModel.computedSizeForUI.height)
                 
-                if let image = viewModel.currentPreview {
+            }
                 
-                    if !viewModel.rendererInitialisedInUI {
+                // MARK: - Linear Gradient
+                
+                if viewModel.showMaskPoints  && viewModel.maskingActive && viewModel.selectedMask == selectedMask && selectedMask != nil {
+                    
+                    
+                    
+                    ZStack {
                         
-                        Image(nsImage: image)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .opacity(viewModel.renderingComplete ? 0 : 1)
-                            .frame(width: viewModel.computedSizeForUI.width, height: viewModel.computedSizeForUI.height)
-                            .onAppear{
-                                viewModel.rendererInitialisedInUI = true
-                            }
-                            .onChange(of: image.size) {
-                                
-                            }
-                    }
-                    
-                    
-                    // MARK: - Linear Gradient
-                    
-                    if viewModel.showMaskPoints  && viewModel.maskingActive && viewModel.selectedMask == selectedMask && selectedMask != nil {
-                        
-                        
-                        
-                        ZStack {
+                        if viewModel.showMask {
                             
-                            if viewModel.showMask {
-                                
-                                LinearGradientView(
-                                    size: $imgSizeUI,
-                                    viewWidth: viewWidth,
-                                    viewHeight: viewHeight,
-                                    origin: $imgOrignUI
-                                )
-                                .mask {
-                                    Rectangle()
-                                        .frame(width: viewModel.computedSizeForUI.width, height: viewModel.computedSizeForUI.height)
-                                    
-                                }
-                            }
-                            
-                            if viewModel.maskingActive {
-                                
-                                Path { path in
-                                    path.move(to: linearAdjustedLine(0))
-                                    path.addLine(to: linearAdjustedLine(1))
-                                }
-                                .stroke(Color("SideBarText"), lineWidth: 1.5)
-                                
-                                
-                                
-                                // Start
-                                Circle()
-                                    .stroke(Color("SideBarText"), lineWidth: 3)
-                                    .fill(Color.clear)
-                                    .frame(width: 20, height: 20)
-                                    .contentShape(Rectangle())
-                                    .position(viewModel.uiStartPoint)
-                                    .gesture(
-                                        DragGesture()
-                                            .onChanged { gesture in
-                                                
-                                                viewModel.uiStartPoint = CGPoint(
-                                                    x: initialCircleStart.x + gesture.translation.width,
-                                                    y: initialCircleStart.y + gesture.translation.height
-                                                )
-                                                
-                                                updateLinearMask()
-                                            }
-                                            .onEnded { _ in
-                                                initialCircleStart = viewModel.uiStartPoint
-                                                
-                                                updateLinearMask()
-                                            }
-                                        
-                                    )
-                                
-                                
-                                // End
-                                Circle()
-                                    .stroke(Color("SideBarText"), lineWidth: 3)
-                                    .fill(Color.clear)
-                                    .frame(width: 20, height: 20)
-                                    .contentShape(Rectangle())
-                                    .position(viewModel.uiEndPoint)
-                                    .simultaneousGesture(
-                                        DragGesture()
-                                            .onChanged { gesture in
-                                                viewModel.uiEndPoint = CGPoint(
-                                                    x: initialCircleEnd.x + gesture.translation.width,
-                                                    y: initialCircleEnd.y + gesture.translation.height
-                                                )
-                                                updateLinearMask()
-                                            }
-                                            .onEnded { _ in
-                                                initialCircleEnd = viewModel.uiEndPoint
-                                                updateLinearMask()
-                                            }
-                                        
-                                    )
-                            }
-                        } // End of Linear ZStack
-                        .mask(Rectangle()
-                            .frame(width: viewWidth, height: viewHeight)
-                        )
-                    }
-                    
-                    
-                    
-                    
-                    // MARK: - Radial Gradient
-                    
-                    
-                    if viewModel.showMaskPoints  && viewModel.maskingActive && viewModel.selectedMask == selectedMask && selectedMask != nil {
-                        
-                        ZStack {
-                            
-                            if viewModel.showMask {
-                                
-                                RadialGradientView(
-                                    start: $viewModel.radialUiStart,
-                                    end: $viewModel.radialUiEnd,
-                                    size: $imgSizeUI,
-                                    width: $viewModel.radialUiWidth,
-                                    height: $viewModel.radialUiHeight,
-                                    feather: $viewModel.radialUiFeather,
-                                    invert: $radialInvertBinding, viewWidth: viewWidth,
-                                    viewHeight: viewHeight
-                                )
-                                .mask(Rectangle()
-                                    .frame(width: radialInvertBinding ? imgSizeUI.width : viewWidth,
-                                           height: radialInvertBinding ? imgSizeUI.height : viewHeight)
-                                )
-                                
-                            }
-                            
-                            // MARK: - Ellipse Outline
-                            
-                            if radialInvertBinding && viewModel.showMask {
-                                
+                            LinearGradientView(
+                                size: $imgSizeUI,
+                                viewWidth: viewWidth,
+                                viewHeight: viewHeight,
+                                origin: $imgOrignUI
+                            )
+                            .mask {
                                 Rectangle()
-                                    .fill(Color.red.opacity(0.75))
-                                    .frame(width: imgSizeUI.width, height: imgSizeUI.height)
-                                    .reverseMask {
-                                        ElipseView(viewWidth: viewWidth, viewHeight: viewHeight, imgSizeUI: imgSizeUI)
-                                    }
+                                    .frame(width: viewModel.computedSizeForUI.width, height: viewModel.computedSizeForUI.height)
                                 
-                                // This is correct
-                                Ellipse()
-                                    .stroke(Color("SideBarText"), lineWidth: 1)
-                                    .frame(width: viewModel.radialUiWidth, height: viewModel.radialUiHeight)
-                                    .position(viewModel.radialUiStart)
-                                    .mask(Rectangle()
-                                        .frame(width: viewWidth, height: viewHeight)
-                                    )
+                            }
+                        }
+                        
+                        if viewModel.maskingActive {
+                            
+                            Path { path in
+                                path.move(to: linearAdjustedLine(0))
+                                path.addLine(to: linearAdjustedLine(1))
+                            }
+                            .stroke(Color("SideBarText"), lineWidth: 1.5)
+                            
+                            
+                            
+                            // Start
+                            Circle()
+                                .stroke(Color("SideBarText"), lineWidth: 3)
+                                .fill(Color.clear)
+                                .frame(width: 20, height: 20)
+                                .contentShape(Rectangle())
+                                .position(viewModel.uiStartPoint)
+                                .gesture(
+                                    DragGesture()
+                                        .onChanged { gesture in
+                                            
+                                            viewModel.uiStartPoint = CGPoint(
+                                                x: initialCircleStart.x + gesture.translation.width,
+                                                y: initialCircleStart.y + gesture.translation.height
+                                            )
+                                            
+                                            updateLinearMask()
+                                        }
+                                        .onEnded { _ in
+                                            initialCircleStart = viewModel.uiStartPoint
+                                            
+                                            updateLinearMask()
+                                        }
+                                    
+                                )
+                            
+                            
+                            // End
+                            Circle()
+                                .stroke(Color("SideBarText"), lineWidth: 3)
+                                .fill(Color.clear)
+                                .frame(width: 20, height: 20)
+                                .contentShape(Rectangle())
+                                .position(viewModel.uiEndPoint)
+                                .simultaneousGesture(
+                                    DragGesture()
+                                        .onChanged { gesture in
+                                            viewModel.uiEndPoint = CGPoint(
+                                                x: initialCircleEnd.x + gesture.translation.width,
+                                                y: initialCircleEnd.y + gesture.translation.height
+                                            )
+                                            updateLinearMask()
+                                        }
+                                        .onEnded { _ in
+                                            initialCircleEnd = viewModel.uiEndPoint
+                                            updateLinearMask()
+                                        }
+                                    
+                                )
+                        }
+                    } // End of Linear ZStack
+                    .mask(Rectangle()
+                        .frame(width: viewWidth, height: viewHeight)
+                    )
+                }
+                
+                
+                
+                
+                // MARK: - Radial Gradient
+                
+                
+                if viewModel.showMaskPoints  && viewModel.maskingActive && viewModel.selectedMask == selectedMask && selectedMask != nil {
+                    
+                    ZStack {
+                        
+                        if viewModel.showMask {
+                            
+                            RadialGradientView(
+                                start: $viewModel.radialUiStart,
+                                end: $viewModel.radialUiEnd,
+                                size: $imgSizeUI,
+                                width: $viewModel.radialUiWidth,
+                                height: $viewModel.radialUiHeight,
+                                feather: $viewModel.radialUiFeather,
+                                invert: $radialInvertBinding, viewWidth: viewWidth,
+                                viewHeight: viewHeight
+                            )
+                            .mask(Rectangle()
+                                .frame(width: radialInvertBinding ? imgSizeUI.width : viewWidth,
+                                       height: radialInvertBinding ? imgSizeUI.height : viewHeight)
+                            )
+                            
+                        }
+                        
+                        // MARK: - Ellipse Outline
+                        
+                        if radialInvertBinding && viewModel.showMask {
+                            
+                            Rectangle()
+                                .fill(Color.red.opacity(0.75))
+                                .frame(width: imgSizeUI.width, height: imgSizeUI.height)
+                                .reverseMask {
+                                    ElipseView(viewWidth: viewWidth, viewHeight: viewHeight, imgSizeUI: imgSizeUI)
+                                }
+                            
+                            // This is correct
+                            Ellipse()
+                                .stroke(Color("SideBarText"), lineWidth: 1)
+                                .frame(width: viewModel.radialUiWidth, height: viewModel.radialUiHeight)
+                                .position(viewModel.radialUiStart)
+                                .mask(Rectangle()
+                                    .frame(width: viewWidth, height: viewHeight)
+                                )
+                            
+                            
+                        } else {
+                            
+                            
+                            Ellipse()
+                                .stroke(Color("SideBarText"), lineWidth: 1)
+                                .frame(width: viewModel.radialUiWidth, height: viewModel.radialUiHeight)
+                                .position(viewModel.radialUiStart)
+                                .mask(Rectangle()
+                                    .frame(width: viewWidth, height: viewHeight)
+                                )
+                            
+                        }
+                        
+                        if !radialPointsEqual()  {
+                            
+                            // MARK: - Start Handle
+                            Circle()
+                                .stroke(Color("MenuAccent"), lineWidth: 3)
+                                .fill(Color("SideBarText"))
+                                .frame(width: 20, height: 20)
+                                .contentShape(Rectangle())
+                                .position(viewModel.radialUiStart)
+                                .mask(Rectangle()
+                                    .frame(width: viewWidth, height: viewHeight)
+                                )
+                                .simultaneousGesture(
+                                    moveRadialMaskGesture()
+                                )
+                            
+                            
+                            
+                            // MARK: - End Handle
+                            Circle()
+                                .stroke(Color("SideBarText"), lineWidth: 3)
+                                .fill(Color("MenuAccent"))
+                                .frame(width: 20, height: 20)
+                                .contentShape(Rectangle())
+                            //                                .position(radialEndUI())
+                                .position(viewModel.radialUiEnd)
+                                .mask(Rectangle()
+                                    .frame(width: viewWidth, height: viewHeight)
+                                )
+                                .simultaneousGesture(
+                                    resizeRadialMaskGesture()
+                                )
+                            
+                            
+                            // Rotate button
+                            ZStack {
+                                Image(systemName: "arrow.trianglehead.clockwise.rotate.90")
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 20, height: 20)
+                                    .foregroundColor(Color("MenuAccent"))
+                                    .position(x: viewModel.radialUiStart.x,
+                                              y: (viewModel.radialUiStart.y - viewModel.radialUiHeight / 2.0) - 25)
+                                //                                    .offset(x: adjustRadialPoints(3).x + 2, y: adjustRadialPoints(3).y + 2)
+                                    .opacity(0.8)
                                 
-                                
-                            } else {
-                                
-                                
-                                Ellipse()
-                                    .stroke(Color("SideBarText"), lineWidth: 1)
-                                    .frame(width: viewModel.radialUiWidth, height: viewModel.radialUiHeight)
-                                    .position(viewModel.radialUiStart)
-                                    .mask(Rectangle()
-                                        .frame(width: viewWidth, height: viewHeight)
-                                    )
+                                Image(systemName: "arrow.trianglehead.clockwise.rotate.90")
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 20, height: 20)
+                                    .foregroundColor(Color("SideBarText"))
+                                    .position(x: viewModel.radialUiStart.x,
+                                              y: (viewModel.radialUiStart.y - viewModel.radialUiHeight / 2.0) - 25)
+                                //                                    .offset(x: adjustRadialPoints(3).x, y: adjustRadialPoints(3).y)
                                 
                             }
                             
-                            if !radialPointsEqual()  {
-                                
-                                // MARK: - Start Handle
-                                Circle()
-                                    .stroke(Color("MenuAccent"), lineWidth: 3)
-                                    .fill(Color("SideBarText"))
-                                    .frame(width: 20, height: 20)
-                                    .contentShape(Rectangle())
-                                    .position(viewModel.radialUiStart)
-                                    .mask(Rectangle()
-                                        .frame(width: viewWidth, height: viewHeight)
-                                    )
-                                    .simultaneousGesture(
-                                        moveRadialMaskGesture()
-                                    )
-                                
-                                
-                                
-                                // MARK: - End Handle
-                                Circle()
-                                    .stroke(Color("SideBarText"), lineWidth: 3)
-                                    .fill(Color("MenuAccent"))
-                                    .frame(width: 20, height: 20)
-                                    .contentShape(Rectangle())
-                                //                                .position(radialEndUI())
-                                    .position(viewModel.radialUiEnd)
-                                    .mask(Rectangle()
-                                        .frame(width: viewWidth, height: viewHeight)
-                                    )
-                                    .simultaneousGesture(
-                                        resizeRadialMaskGesture()
-                                    )
-                                
-                                
-                                // Rotate button
-                                ZStack {
-                                    Image(systemName: "arrow.trianglehead.clockwise.rotate.90")
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fit)
-                                        .frame(width: 20, height: 20)
-                                        .foregroundColor(Color("MenuAccent"))
-                                        .position(x: viewModel.radialUiStart.x,
-                                                  y: (viewModel.radialUiStart.y - viewModel.radialUiHeight / 2.0) - 25)
-                                    //                                    .offset(x: adjustRadialPoints(3).x + 2, y: adjustRadialPoints(3).y + 2)
-                                        .opacity(0.8)
-                                    
-                                    Image(systemName: "arrow.trianglehead.clockwise.rotate.90")
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fit)
-                                        .frame(width: 20, height: 20)
-                                        .foregroundColor(Color("SideBarText"))
-                                        .position(x: viewModel.radialUiStart.x,
-                                                  y: (viewModel.radialUiStart.y - viewModel.radialUiHeight / 2.0) - 25)
-                                    //                                    .offset(x: adjustRadialPoints(3).x, y: adjustRadialPoints(3).y)
-                                    
-                                }
-                                
-                            }
-                        } // End of Radial Z Stack
-                    }
-                    
+                        }
+                    } // End of Radial Z Stack
                 }
                 
-            }
-            .frame(width: viewWidth, height: viewHeight)
-            .contentShape(Rectangle())
-            .simultaneousGesture(panGesture())
-            .simultaneousGesture(linearMaskGesture())
-            .simultaneousGesture(radialMaskGesture())
-            .simultaneousGesture(zoomTap())
-        
-            .onAppear {
-                calculateCoords()
-            }
-        
-            // Bindings
-            .onChange(of: LinearStartPointBinding) {
-                
-               
-                
-                guard viewModel.selectedMask != nil else { return }
-                let point = deNormaliseCoord(LinearStartPointBinding)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    let ui_point = convertCoordsToUI(point)
-                    viewModel.uiStartPoint = ui_point
-                    initialCircleStart = ui_point
-                }
-            }
-            .onChange(of: LinearEndPointBinding) {
-                
-                
-                
-                guard viewModel.selectedMask != nil else { return }
-                let point = deNormaliseCoord(LinearEndPointBinding)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    let ui_point = convertCoordsToUI(point)
-                    viewModel.uiEndPoint = ui_point
-                    initialCircleEnd = ui_point
-                    
-                }
-            }
-            .onChange(of: radialStartPointBinding) {
-                
-                
-                
-                guard viewModel.selectedMask != nil else { return }
-                let startPixelPoint = deNormaliseCoord(radialStartPointBinding)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    let ui_start_point = convertCoordsToUI(startPixelPoint)
-                    viewModel.radialUiStart = ui_start_point
-                    initialRadialStart = ui_start_point
-                    (viewModel.radialUiWidth, viewModel.radialUiHeight) = calculateEllipseSizeFromPoint(viewModel.radialUiStart, viewModel.radialUiEnd)
-                }
-            }
-        
-            .onChange(of: radialEndPointBinding) {
-
-                guard viewModel.selectedMask != nil else { return }
-                let endPixelPoint = deNormaliseCoord(radialEndPointBinding)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    let ui_end_point = convertCoordsToUI(endPixelPoint)
-                    viewModel.radialUiEnd = ui_end_point
-                    initialRadialEnd = ui_end_point
-                    (viewModel.radialUiWidth, viewModel.radialUiHeight) = calculateEllipseSizeFromPoint(viewModel.radialUiStart, viewModel.radialUiEnd)
-                }
-            }
             
+            
+        }
+        .frame(width: viewWidth, height: viewHeight)
+        .contentShape(Rectangle())
+        .simultaneousGesture(panGesture())
+        .simultaneousGesture(linearMaskGesture())
+        .simultaneousGesture(radialMaskGesture())
+        .simultaneousGesture(zoomTap())
+        
+        .onAppear {
+            calculateCoords()
+        }
+        
+        // Bindings
+        .onChange(of: LinearStartPointBinding) {
+            
+            
+            
+            guard viewModel.selectedMask != nil else { return }
+            let point = deNormaliseCoord(LinearStartPointBinding)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                let ui_point = convertCoordsToUI(point)
+                viewModel.uiStartPoint = ui_point
+                initialCircleStart = ui_point
+            }
+        }
+        .onChange(of: LinearEndPointBinding) {
+            
+            
+            
+            guard viewModel.selectedMask != nil else { return }
+            let point = deNormaliseCoord(LinearEndPointBinding)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                let ui_point = convertCoordsToUI(point)
+                viewModel.uiEndPoint = ui_point
+                initialCircleEnd = ui_point
+                
+            }
+        }
+        .onChange(of: radialStartPointBinding) {
+            
+            
+            
+            guard viewModel.selectedMask != nil else { return }
+            let startPixelPoint = deNormaliseCoord(radialStartPointBinding)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                let ui_start_point = convertCoordsToUI(startPixelPoint)
+                viewModel.radialUiStart = ui_start_point
+                initialRadialStart = ui_start_point
+                (viewModel.radialUiWidth, viewModel.radialUiHeight) = calculateEllipseSizeFromPoint(viewModel.radialUiStart, viewModel.radialUiEnd)
+            }
+        }
+        
+        .onChange(of: radialEndPointBinding) {
+            
+            guard viewModel.selectedMask != nil else { return }
+            let endPixelPoint = deNormaliseCoord(radialEndPointBinding)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                let ui_end_point = convertCoordsToUI(endPixelPoint)
+                viewModel.radialUiEnd = ui_end_point
+                initialRadialEnd = ui_end_point
+                (viewModel.radialUiWidth, viewModel.radialUiHeight) = calculateEllipseSizeFromPoint(viewModel.radialUiStart, viewModel.radialUiEnd)
+            }
+        }
+        
         
         
     }
@@ -407,13 +413,13 @@ struct ImageOverlayView: View {
         let xNorm = point.x / width
         let yNorm = point.y / height
         let normCoord =  CGPoint(x: xNorm, y: yNorm)
-    
+        
         
         return normCoord
     }
-
+    
     private func deNormaliseCoord(_ point: CGPoint) -> CGPoint{
-
+        
         
         let err = CGPoint(x: 0, y: 0)
         guard let currentImg = viewModel.currentImage else {
@@ -495,8 +501,8 @@ struct ImageOverlayView: View {
      size to get the coreimage coords.
      
      */
-
-
+    
+    
     
     
     /// Accepts ui coord, and returns coord
@@ -564,7 +570,7 @@ struct ImageOverlayView: View {
         let dx = abs(end.x - start.x)
         let dy = abs(end.y - start.y)
         
-//        return (dx * 2, dy * 2)
+        //        return (dx * 2, dy * 2)
         
         var width = dx * 2
         var height = dy * 2
@@ -590,7 +596,7 @@ struct ImageOverlayView: View {
         return (width, height)
     }
     
-
+    
     
     
     
@@ -603,6 +609,8 @@ struct ImageOverlayView: View {
     // ****************************************************************** //
     // ****************************** TAP ******************************* //
     // ****************************************************************** //
+    
+    
     
     
     private func zoomTap() -> some Gesture {
@@ -622,6 +630,7 @@ struct ImageOverlayView: View {
                     viewModel.isZoomed = false
                     viewModel.zoomRect = .zero
                     
+                    
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         if let id = viewModel.currentImgID {
                             print("ZoomingOut")
@@ -639,18 +648,18 @@ struct ImageOverlayView: View {
                     
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         if let id = viewModel.currentImgID {
-							print("ZoomingIn")
+                            print("ZoomingIn")
                             FilterPipeline.shared.applyPipelineV2Sync(id, dataModel)
                             
                         }
                     }
                 }
                 
-
+                
             }
     }
     
-
+    
     
     
     
@@ -682,7 +691,7 @@ struct ImageOverlayView: View {
         
         return newRect
     }
-
+    
     private func panGesture() -> some Gesture {
         DragGesture(minimumDistance: 10)
             .onChanged { value in
@@ -708,8 +717,7 @@ struct ImageOverlayView: View {
                 let delta = value.translation
                 
                 // Respect natural scroll setting
-                let isNatural = UserDefaults.standard.bool(forKey: "com.apple.swipescrolldirection")
-                let adjustedDeltaY = isNatural ? -delta.height : delta.height
+                let adjustedDeltaY =  -delta.height
                 
                 lastDragOffset.width = viewModel.zoomRect.origin.x
                 lastDragOffset.height = viewModel.zoomRect.origin.y
@@ -759,7 +767,7 @@ struct ImageOverlayView: View {
     // ***************************** RADIAL ***************************** //
     // ****************************************************************** //
     
-
+    
     
     private func radialPointsEqual() -> Bool {
         return viewModel.radialUiStart == viewModel.radialUiEnd
@@ -792,9 +800,9 @@ struct ImageOverlayView: View {
         let adjustedLineEnd = CGPoint(x: adjustedEnd.x - ux * innerCircleRadius,
                                       y: adjustedEnd.y - uy * innerCircleRadius)
         
-//        viewModel.radialUiStart = adjustedStart
-//        viewModel.radialUiEnd = adjustedEnd
-//        updateRadialBinding()
+        //        viewModel.radialUiStart = adjustedStart
+        //        viewModel.radialUiEnd = adjustedEnd
+        //        updateRadialBinding()
         
         let padding = calculateAndReturnPadding()
         
@@ -895,11 +903,11 @@ struct ImageOverlayView: View {
                 // Calculate UI Variables
                 viewModel.radialUiStart = value.startLocation
                 viewModel.radialUiEnd = value.location
-//                (viewModel.radialUiWidth, viewModel.radialUiHeight) = calculateRadialWidthAndHeightForUI(value.startLocation, value.location)
+                //                (viewModel.radialUiWidth, viewModel.radialUiHeight) = calculateRadialWidthAndHeightForUI(value.startLocation, value.location)
                 (viewModel.radialUiWidth, viewModel.radialUiHeight) =
-                    calculateEllipseSizeFromPoint(viewModel.radialUiStart, viewModel.radialUiEnd)
+                calculateEllipseSizeFromPoint(viewModel.radialUiStart, viewModel.radialUiEnd)
                 
-//                updateRadialBinding()
+                //                updateRadialBinding()
                 
                 // Calculate CoreImage variables
                 let ciStart = convertCoords(value.startLocation)
@@ -921,15 +929,15 @@ struct ImageOverlayView: View {
                 // Calculate UI Variables
                 viewModel.radialUiStart = value.startLocation
                 viewModel.radialUiEnd = value.location
-//                (viewModel.radialUiWidth, viewModel.radialUiHeight) = calculateRadialWidthAndHeightForUI(value.startLocation, value.location)
+                //                (viewModel.radialUiWidth, viewModel.radialUiHeight) = calculateRadialWidthAndHeightForUI(value.startLocation, value.location)
                 
                 (viewModel.radialUiWidth, viewModel.radialUiHeight) =
-                    calculateEllipseSizeFromPoint(viewModel.radialUiStart, viewModel.radialUiEnd)
+                calculateEllipseSizeFromPoint(viewModel.radialUiStart, viewModel.radialUiEnd)
                 
                 initialRadialStart = viewModel.radialUiStart
                 initialRadialEnd = viewModel.radialUiEnd
                 
-//                updateRadialBinding()
+                //                updateRadialBinding()
                 
                 // Calculate CoreImage variables
                 let ciStart = convertCoords(value.startLocation)
@@ -960,14 +968,14 @@ struct ImageOverlayView: View {
                     x: initialRadialEnd.x + gesture.translation.width,
                     y: initialRadialEnd.y + gesture.translation.height
                 )
-
+                
                 
             }
             .onEnded { _ in
                 initialRadialStart = viewModel.radialUiStart
                 initialRadialEnd = viewModel.radialUiEnd
                 
-
+                
                 // Calculate CoreImage variables
                 let ciStart = convertCoords(viewModel.radialUiStart)
                 let ciEnd = convertCoords(viewModel.radialUiEnd)
@@ -1012,7 +1020,7 @@ struct ImageOverlayView: View {
         guard ratio > 0 else { return (width, height) }
         
         let scale = 1.0 + (1.0 - (1 / ratio))
-
+        
         return (width * scale, height * scale)
     }
     
@@ -1024,31 +1032,31 @@ struct ImageOverlayView: View {
                     x: initialRadialEnd.x + gesture.translation.width,
                     y: initialRadialEnd.y + gesture.translation.height
                 )
-
+                
                 // The dragged point *defines* the ellipse edge.
                 viewModel.radialUiEnd = dragLocation
                 (viewModel.radialUiWidth, viewModel.radialUiHeight) =
-                    calculateEllipseSizeFromPoint(start, dragLocation)
+                calculateEllipseSizeFromPoint(start, dragLocation)
             }
             .onEnded { value in
                 let endLocation = CGPoint(
                     x: initialRadialEnd.x + value.translation.width,
                     y: initialRadialEnd.y + value.translation.height
                 )
-
+                
                 // Final width/height so ellipse includes the handle
                 (viewModel.radialUiWidth, viewModel.radialUiHeight) =
-                    calculateEllipseSizeFromPoint(viewModel.radialUiStart, endLocation)
-
+                calculateEllipseSizeFromPoint(viewModel.radialUiStart, endLocation)
+                
                 initialRadialEnd = endLocation
                 viewModel.radialUiEnd = endLocation
-
+                
                 // CoreImage coordinate updates
                 let ciStart = convertCoords(viewModel.radialUiStart)
                 let ciEnd = convertCoords(endLocation)
                 $radialStartPointBinding.wrappedValue = normaliseCoord(ciStart)
                 $radialEndPointBinding.wrappedValue = normaliseCoord(ciEnd)
-
+                
                 let (ciWidth, ciHeight) = calculateRadialWidthAndHeightForCI(ciStart, ciEnd)
                 $radialWidthBinding.wrappedValue = normaliseWidth(ciWidth)
                 $radialHeightBinding.wrappedValue = normaliseHeight(ciHeight)
@@ -1101,7 +1109,7 @@ struct ImageOverlayView: View {
         $LinearEndPointBinding.wrappedValue = normaliseCoord(ciEnd)
     }
     
-
+    
     
     // Main Gesture, used to draw initial mask
     private func linearMaskGesture() -> some Gesture {
@@ -1136,7 +1144,7 @@ struct ImageOverlayView: View {
     
     
     
-
+    
     
     
     private func calculateAndReturnPadding() -> CGPoint {
@@ -1144,7 +1152,7 @@ struct ImageOverlayView: View {
             x: (viewWidth - viewModel.metalImageWidth) / 2.0,
             y: (viewHeight - viewModel.metalImageHeight) / 2.0)
     }
-
+    
     
 }
 

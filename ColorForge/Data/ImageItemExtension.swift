@@ -209,6 +209,8 @@ extension ImageItem {
 
             applyScanMode: item.applyScanMode,
             applyPFE: item.applyPFE,
+            apply2383: item.apply2383,
+            apply3513: item.apply3513,
             offsetRGB: item.offsetRGB,
             offsetRed: item.offsetRed,
             offsetGreen: item.offsetGreen,

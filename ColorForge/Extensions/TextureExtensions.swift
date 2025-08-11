@@ -165,6 +165,90 @@ extension CIImage {
 		return result
 	}
 	
+	func smallPerlin() -> CIImage {
+		let kernel = CIColorKernelCache.shared.perlinNoiseSmall
+		let length = max(self.extent.width, self.extent.height)
+		let randomX = Float.random(in: 0...50)
+		let randomY = Float.random(in: 0...50)
+        let randomWave = Float.random(in: 0.005...0.1)
+		let width = self.extent.width
+		let height = self.extent.height
+		
+		guard let result = kernel.apply(
+			extent: self.extent,
+			roiCallback: { $1 },
+			arguments: [self, length, randomX, randomY, width, height, randomWave]
+		) else {
+			print("Failed to apply \(kernel)")
+			return self}
+		return result.cropped(to: self.extent)
+	}
+	
+	func createNoiseAndCrop() -> CIImage {
+		let noise = self.grayNoise()
+		return noise.cropped(to: self.extent)
+	}
+	
+	func colorNoise() -> CIImage {
+		let filter = CIFilter.randomGenerator()
+		guard let noise = filter.outputImage else {
+			return self
+		}
+		return noise
+	}
+	
+	func grayNoise() -> CIImage {
+		let colorNoise = self.colorNoise()
+		
+		let filter = CIFilter.colorControls()
+		filter.inputImage = colorNoise
+		filter.saturation = 0
+		guard let noise = filter.outputImage else {
+			fatalError("GuassianBlur extension failed")
+		}
+		return noise
+	}
+    
+    func semiNoise() -> CIImage {
+        let colorNoise = self.colorNoise()
+        
+        let filter = CIFilter.colorControls()
+        filter.inputImage = colorNoise
+        filter.saturation = 0.3
+        guard let noise = filter.outputImage else {
+            fatalError("GuassianBlur extension failed")
+        }
+        return noise
+    }
+    
+    // MARK: - Grain V4
+    
+    
+    func mixGrain(_ blur: CIImage, _ fade: Float) -> CIImage {
+        let kernel = CIColorKernelCache.shared.grainMix
+        guard let result = kernel.apply(
+            extent: self.extent,
+            roiCallback: { $1 },
+            arguments: [self, blur, fade]
+        ) else {
+            print("Failed to apply \(kernel)")
+            return self}
+        return result
+    }
+    
+    func maskGrain(_ grain2: CIImage, _ grain3: CIImage, _ perlin1: CIImage, _ perlin2: CIImage, _ perlin3: CIImage) -> CIImage {
+        let kernel = CIColorKernelCache.shared.maskGrain
+        guard let result = kernel.apply(
+            extent: self.extent,
+            roiCallback: { $1 },
+            arguments: [self, grain2, grain3, perlin1, perlin2, perlin3]
+        ) else {
+            print("Failed to apply \(kernel)")
+            return self}
+        return result
+    }
+    
+	
 
 	
 	// MARK: - Tile Grain Plates for Export

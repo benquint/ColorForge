@@ -27,10 +27,19 @@ struct TextureView: View {
 	var body: some View {
 		VStack {
             
+            Divider().overlay(Color("MenuAccent"))
+                .frame(height: 3)
+
+            
+            Spacer()
+                .frame(height: 20)
+            
 //            TomView(applyTom: applyTom)
 //            
 //            Divider().overlay(Color("MenuAccent"))
             
+
+
             MTFView(
                 applyMTF: $applyMTF,
                 mtfBlend: $mtfBlend,
@@ -38,6 +47,7 @@ struct TextureView: View {
             )
 
             Divider().overlay(Color("MenuAccent"))
+                .frame(height: 3)
 
 //            GrainView(
 //                applyGrain: $applyGrain,
@@ -57,25 +67,22 @@ struct TextureView: View {
             
             
             Divider().overlay(Color("MenuAccent"))
+                .frame(height: 3)
 			
-			BordersView(
-				showPaperMask: showPaperMask,
-				borderImgScale: borderImgScale,
-				borderScale: borderScale,
-				borderXshift: borderXshift,
-				borderYshift: borderYshift
-			)
-			
-			
-			Divider().overlay(Color("MenuAccent"))
+//			BordersView(
+//				showPaperMask: showPaperMask,
+//				borderImgScale: borderImgScale,
+//				borderScale: borderScale,
+//				borderXshift: borderXshift,
+//				borderYshift: borderYshift
+//			)
+//			
+//			
+//            Divider().overlay(Color("MenuAccent"))
+//                .frame(height: 3)
 
 			Spacer()
 		}
-		.font(.system(.body, design: .rounded, weight: .light))
-		.frame(width: 300, alignment: .topLeading)
-		.background(Color("MenuBackground"))
-		.frame(maxHeight: .infinity)
-		.padding(10)
 	}
 	
 	

@@ -23,11 +23,18 @@ struct HDRView: View {
 
 	var body: some View {
 		
-		CollapsibleSectionView(
-			title: "HDR:",
-			isCollapsed: $isCollapsed,
+		SubSection(
+            title: "HDR",
+            icon: "camera.on.rectangle",
+            isCollapsed: $isCollapsed,
+            resetAction: {
+                hdrWhite = 0
+                hdrHighlight = 0
+                hdrShadow = 0
+                hdrBlack = 0
+            },
 			content: {
-				VStack(alignment: .leading, spacing: 10) {
+				VStack() {
 
 					
                     SliderView(
@@ -74,12 +81,6 @@ struct HDRView: View {
 				.onChange(of: isCollapsed) { newValue in
 					AppDataManager.shared.setCollapsed(newValue, for: "HDRView")
 				}
-			},
-			resetAction: {
-                hdrWhite = 0
-                hdrHighlight = 0
-                hdrShadow = 0
-                hdrBlack = 0
 			}
 		)
 	}

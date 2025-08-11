@@ -10,6 +10,7 @@ import SwiftUI
 struct SamView: View {
     @EnvironmentObject var sam2: SAM2
     @EnvironmentObject var viewModel: ImageViewModel
+    @EnvironmentObject var dataModel: DataModel
     @EnvironmentObject var samModel: SamModel
     
     let viewWidth: CGFloat
@@ -36,6 +37,7 @@ struct SamView: View {
     @State private var segmentationImages: [SAMSegmentation] = []
     @State private var originalSize: CGSize = .zero
     
+    @Binding var aiMaskImageBinding: CIImage?
     
     @State private var imgSize: CGSize = .zero
     
@@ -72,12 +74,6 @@ struct SamView: View {
                     Color.clear.preference(key: SizePreferenceKey.self, value: geometry.size)
                 })
                 .onPreferenceChange(SizePreferenceKey.self) { imageSize = $0 }
-//                .onChange(of: selectedPoints.count, {
-//                    if !selectedPoints.isEmpty {
-//                        print("Starting segmentation with \(selectedPoints.count) points")
-//                        performForwardPass()
-//                    }
-//                })
                 .onChange(of: boundingBoxes.count, {
                     if !boundingBoxes.isEmpty {
                         print("Starting segmentation")
@@ -85,31 +81,20 @@ struct SamView: View {
                     }
                 })
                 .overlay {
-                    PointsOverlay(selectedPoints: $selectedPoints, selectedTool: $selectedTool, imageSize: imageSize)
-                    BoundingBoxesOverlay(boundingBoxes: boundingBoxes, currentBox: currentBox, imageSize: imageSize)
-                    
-                    if !segmentationImages.isEmpty {
-//                        ForEach(Array(segmentationImages.enumerated()), id: \.element.id) { index, segmentation in
-//                            SegmentationOverlay(segmentationImage: $segmentationImages[index], imageSize: imageSize, shouldAnimate: false)
-//                                .zIndex(Double (segmentationImages.count - index))
-//                        }
-                        SegmentationOverlayV2(imageSize: imageSize)
-                        
+                    if samModel.showPoints {
+                        PointsOverlay(selectedPoints: $selectedPoints, selectedTool: $selectedTool, imageSize: imageSize)
+                        BoundingBoxesOverlay(boundingBoxes: boundingBoxes, currentBox: currentBox, imageSize: imageSize)
                     }
                     
-                    if let currentSegmentation = currentSegmentation {
-//                        SegmentationOverlay(segmentationImage: .constant(currentSegmentation), imageSize: imageSize, origin: animationPoint, shouldAnimate: true)
-//                            .zIndex(Double(segmentationImages.count + 1))
-                        
-                        SegmentationOverlayV2(imageSize: imageSize)
-                       
-                    }
+                    SegmentationOverlayV2(imageSize: imageSize)
+                    
+                    
                 }
             
+
+            
                 .onAppear {
-                    if selectedTool == nil {
-                        selectedTool = tools[0]
-                    }
+
                     if selectedCategory == nil {
                         selectedCategory = categories.first
                     }
@@ -142,13 +127,15 @@ struct SamView: View {
         .frame(width: viewWidth, height: viewHeight)
         .onAppear{
             calculateImageSize()
-            
+
             
             if let image = viewModel.currentPreview {
                 imageSize = imgSize
                 originalSize = image.size
                 displayImage = image
             }
+            
+            
         }
         .onChange(of: viewWidth) {
             calculateImageSize()
@@ -159,7 +146,46 @@ struct SamView: View {
         .onChange(of: segmentationImages.count) { newCount in
             print("Segmentation image count changed: \(newCount)")
         }
+        .onChange(of: viewModel.isZoomed) {
+                isZoomed()
+        }
+
         
+        
+    }
+    
+    
+    private func isZoomed() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            
+            selectedPoints = []
+            boundingBoxes = []
+            
+            calculateImageSize()
+            
+            if let image = viewModel.currentPreview {
+                imageSize = imgSize
+                originalSize = image.size
+                displayImage = image
+            }
+            
+            segmentationImages = []
+            self.reset()
+            Task {
+                if let displayImage, let pixelBuffer = displayImage.pixelBuffer(width: 1024, height: 1024) {
+                    originalSize = displayImage.size
+                    do {
+                        try await sam2.getImageEncoding(from: pixelBuffer)
+                        print("Image encoding complete")
+                    } catch {
+                        print("Image encoding error")
+                        self.error = error
+                    }
+                } else {
+                    print("Error unwrapping displayImage and converting to buffer")
+                }
+            }
+        }
     }
     
     private func reset() {
@@ -168,7 +194,6 @@ struct SamView: View {
         currentBox = nil
         currentSegmentation = nil
     }
-    
     
     
     
@@ -249,8 +274,14 @@ struct SamView: View {
                             title: "Untitled \(segmentationNumber + 1)"
                         )
                         
-                        samModel.addMask(segmentationOverlay)
-                        self.currentSegmentation = segmentationOverlay
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            
+                            if samModel.addToMask {
+                                samModel.addMask(segmentationOverlay, dataModel)
+                            } else if samModel.subtractFromMask {
+                                samModel.subtractMask(segmentationOverlay, dataModel)
+                            }
+                        }
                     }
                 } else {
                     print("[DEBUG] No mask returned from SAM2.getMask.")

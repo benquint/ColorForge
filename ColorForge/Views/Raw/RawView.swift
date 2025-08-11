@@ -53,6 +53,13 @@ struct RawView: View {
 	
 	var body: some View {
 		VStack {
+            Divider().overlay(Color("MenuAccent"))
+                .frame(height: 3)
+
+            
+            Spacer()
+                .frame(height: 20)
+            
 			// White balance / matching view
 			WhiteBalanceView(
 				temp: $temp,
@@ -62,19 +69,21 @@ struct RawView: View {
 			)
 
 			Divider().overlay(Color("MenuAccent"))
+                .frame(height: 3)
 
 			// Raw Adjustment Section
 			RawAdjustView(
                 exposure: $exposure,
                 contrast: $contrast,
                 saturation: $saturation,
-                isRawAdjustCollapsed: $isRawAdjustCollapsed,
+                isRawAdjustCollapsed: $isRawAdjustCollapsed
             )
 
 				
 			
 			Divider().overlay(Color("MenuAccent"))
-//			
+                .frame(height: 3)
+//
 //			MatchImageView()
 //				.environmentObject(imageProcessingModel)
 //			
@@ -119,10 +128,5 @@ struct RawView: View {
 
 			Spacer()
 		}
-		.font(.system(.body, design: .rounded, weight: .light))
-		.frame(width: 300, alignment: .topLeading)
-		.background(Color("MenuBackground"))
-		.frame(maxHeight: .infinity)
-		.padding(10)
 	}
 }

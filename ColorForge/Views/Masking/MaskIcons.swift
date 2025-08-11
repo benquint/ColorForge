@@ -11,6 +11,7 @@ struct MaskIcons: View {
     @EnvironmentObject var pipeline: FilterPipeline
     @EnvironmentObject var viewModel: ImageViewModel
     @EnvironmentObject var dataModel: DataModel
+    @EnvironmentObject var samModel: SamModel
     
     @State private var showingNamePopup = false
     @State private var namingMaskId: UUID? = nil
@@ -32,13 +33,14 @@ struct MaskIcons: View {
     @Binding var radialOpacityBinding: Float
     
     
-    
+    @State private var pendingMaskType: PendingMaskType = .linear
     private enum PendingMaskType {
         case linear
         case radial
+        case ai
     }
     
-    @State private var pendingMaskType: PendingMaskType = .linear
+   
     
     var body: some View {
         HStack{
@@ -59,6 +61,9 @@ struct MaskIcons: View {
                     
                     if viewModel.drawingRadialMask {
                         viewModel.drawingRadialMask = false
+                    }
+                    if viewModel.sam2MaskMode {
+                        viewModel.sam2MaskMode = false
                     }
                     
                     print("""
@@ -113,6 +118,10 @@ struct MaskIcons: View {
                     if viewModel.drawingLinearMask {
                         viewModel.drawingLinearMask = false
                     }
+                    if viewModel.sam2MaskMode {
+                        viewModel.sam2MaskMode = false
+                    }
+                    
                     
                 }) {
                     Image(systemName: "circle.bottomhalf.filled")
@@ -135,14 +144,26 @@ struct MaskIcons: View {
             
             Spacer()
             
-            // Person Mask
+            // AI Mask
             VStack {
                 Button(action: {
-					if !viewModel.sam2MaskMode {
-						viewModel.sam2MaskMode = true
-					} else {
-						viewModel.sam2MaskMode = false
-					}
+                    selectedMask = nil
+                    viewModel.showMask = false
+                    viewModel.selectedMask = nil
+                    samModel.selectedMask = nil
+                    samModel.currentMask = nil
+                    
+                    
+                    createNewAiMask()
+                    
+
+                    
+                    if viewModel.drawingRadialMask {
+                        viewModel.drawingRadialMask = false
+                    }
+                    if viewModel.drawingLinearMask {
+                        viewModel.drawingLinearMask = false
+                    }
 				}) {
                     Image(systemName: "wand.and.stars.inverse")
                         .resizable()
@@ -195,10 +216,74 @@ struct MaskIcons: View {
                     addLinearMask(named: newName)
                 case .radial:
                     addRadialMask(named: newName)
+                case .ai:
+                    addAiMask(named: newName)
                 }
                 viewModel.drawingNewMask = false
                 showingNamePopup = false
             }
+        }
+    }
+    
+    
+    private func createNewAiMask() {
+        guard selectedMask == nil else { return }
+        guard let id = viewModel.currentImgID,
+              let item = dataModel.items.first(where: { $0.id == id }) else { return }
+        let defaultName = "Ai Mask \(item.maskSettings.linearGradients.count + 1)"
+        pendingMaskName = defaultName
+        namingMaskId = nil // means we're creating a new mask
+        pendingMaskType = .ai
+        showingNamePopup = true
+        selectedMask = nil
+        samModel.currentMask = nil
+        
+        if !viewModel.sam2MaskMode {
+            viewModel.sam2MaskMode = true
+        } else {
+            viewModel.sam2MaskMode = false
+        }
+        
+        dataModel.updateItem(id: id) { updated in
+            updated.maskSettings.selectedMaskID = nil
+        }
+        viewModel.showMask = false
+        viewModel.drawingNewMask = false
+        samModel.showSamMask = true
+    }
+    
+    private func addAiMask(named name: String) {
+        guard let id = viewModel.currentImgID else {
+                print("Current Image ID is nil")
+            return
+        }
+
+
+        let newMask = AiMask(
+            maskUrl: nil,
+            maskImageLoaded: false,
+            name: name,
+            feather: 5.0,
+            invert: false,
+            opacity: 100.0,
+            maskImage: nil
+        )
+        
+
+
+        // Generate id
+        DispatchQueue.main.async {
+            dataModel.updateItem(id: id) { updated in
+                updated.maskSettings.aiMasks.append(newMask)
+                updated.maskSettings.selectedMaskID = newMask.id
+                updated.maskSettings.settingsByMaskID[newMask.id] = MaskParameterSet()
+            }
+            
+
+            
+            selectedMask = newMask.id
+            viewModel.selectedMask = newMask.id
+            samModel.selectedMask = newMask.id
         }
     }
     
@@ -291,6 +376,7 @@ struct MaskIcons: View {
 
         selectedMask = newMask.id
         viewModel.selectedMask = newMask.id
+        
 
 //        Task {
 //            await pipeline.applyPipelineV2(id, dataModel)

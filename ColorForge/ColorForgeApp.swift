@@ -56,30 +56,12 @@ struct ColorForgeApp: App {
                 .environmentObject(HistogramModel.shared)
                 .environmentObject(ShortcutViewModel.shared)
                 .environmentObject(SamModel.shared)
-                .background(BackgroundWindowModifier())
+                .toolbarBackground(.clear, for: .windowToolbar)
+                .navigationTitle("")
 		}
+        
 	}
 }
 
 
 
-struct BackgroundWindowModifier: NSViewRepresentable {
-    typealias NSViewType = NSView  // Fix 1: declare the NSView type
-
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-
-        DispatchQueue.main.async {
-            if let window = view.window {
-                window.titlebarAppearsTransparent = true
-                window.titleVisibility = .hidden
-                window.styleMask.insert(.fullSizeContentView)
-//                window.isMovableByWindowBackground = true
-            }
-        }
-
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {}
-}

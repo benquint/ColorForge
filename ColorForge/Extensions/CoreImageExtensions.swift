@@ -37,6 +37,14 @@ extension CIImage {
 		filter.extent = self.extent
 		return filter.outputImage!
 	}
+    
+    func findAveragePix() -> CIImage {
+        let filter = CIFilter.areaAverage()
+        filter.inputImage = self
+        filter.extent = self.extent
+        return filter.outputImage!
+    }
+    
 	
 	
 	// MARK: - Clamping

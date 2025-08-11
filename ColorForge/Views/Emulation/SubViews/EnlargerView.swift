@@ -38,35 +38,24 @@ struct EnlargerView: View {
 	
 		@State private var printMode: Bool = false
 
-	
+    @State private var apply: Bool = false
 	
 	var body: some View {
 		
-		CollapsibleSectionView(
-			title: "Enlarger:",
+		SubSection(
+			title: "Enlarger",
+            icon: "film",
+            checkBoxBinding: $printMode,
 			isCollapsed: $isCollapsed,
+            resetAction: {
+                enlargerExp = 16.0
+                enlargerFStop = 11.0
+                cyan = 0.0
+                magenta = 46.0
+                yellow = 87.0
+            },
 			content: {
-				VStack(alignment: .leading, spacing: 10) {
-					HStack {
-						Text("Apply:")
-							.foregroundStyle(Color("SideBarText"))
-						Spacer()
-						
-						
-						// Apply PrintMode
-						Toggle("", isOn: $printMode)
-							.toggleStyle(SwitchToggleStyle())
-							.labelsHidden()
-							.padding(.trailing, 0)
-							.onChange(of: printMode) { newValue in
-								applyPrintMode = newValue
-							}
-							.onChange(of: viewModel.currentImgID) {
-								printMode = applyPrintMode
-							}
-					}
-
-                
+				VStack() {
                         
                         SliderView(
                             label: "Time:",
@@ -121,21 +110,22 @@ struct EnlargerView: View {
                     
                     
 				}
+                .onChange(of: printMode) { newValue in
+                    applyPrintMode = newValue
+                }
+                .onChange(of: viewModel.currentImgID) {
+                    printMode = applyPrintMode
+                }
 				.onAppear {
+                    printMode = applyPrintMode
 					focusedField = nil
 				}
 				.onChange(of: isCollapsed) { newValue in
 					AppDataManager.shared.setCollapsed(newValue, for: "EnlargerView")
 				}
 
-			},
-			resetAction: {
-                enlargerExp = 16.0
-                enlargerFStop = 11.0
-                cyan = 0.0
-                magenta = 46.0
-                yellow = 87.0
 			}
+
 		)
 	}
 }

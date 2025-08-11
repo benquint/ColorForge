@@ -8,59 +8,37 @@
 import SwiftUI
 
 struct PrintHalationView: View {
-	@EnvironmentObject var viewModel: ImageViewModel
-	
+    @EnvironmentObject var viewModel: ImageViewModel
+    
     @Binding var printHalation_size: Float
     @Binding var printHalation_amount: Float
     @Binding var printHalation_darkenMode: Bool
     @Binding var printHalation_apply: Bool
-
+    
     @FocusState private var focusedField: String?
     @State private var isCollapsed: Bool = false
-	
+    
     @State private var apply: Bool = false
-	@State private var apply2: Bool = false
-
+    @State private var apply2: Bool = false
+    
     var body: some View {
-        CollapsibleSectionView(
-            title: "Print Halation:",
+        SubSection(
+            title: "Print Halation",
+            icon: "drop.triangle",
+            checkBoxBinding: $apply,
             isCollapsed: $isCollapsed,
+            resetAction: {
+                printHalation_apply = false
+                printHalation_darkenMode = false
+                printHalation_size = 10
+                printHalation_amount = 50
+            },
             content: {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("Apply:")
-                            .foregroundStyle(Color("SideBarText"))
-                        Spacer()
-                        Toggle("", isOn: $apply)
-                            .toggleStyle(SwitchToggleStyle())
-                            .labelsHidden()
-                            .padding(.trailing, 0)
-							.onChange(of: apply) { newValue in
-                                printHalation_apply = newValue
-							}
-							.onChange(of: viewModel.currentImgID) {
-								apply = printHalation_apply
-							}
-						
-                    }
+                VStack() {
                     
-                    HStack {
-                        Text("Allow darkening:")
-                            .foregroundStyle(Color("SideBarText"))
-                        Spacer()
-                        Toggle("", isOn: $apply2)
-                            .toggleStyle(SwitchToggleStyle())
-                            .labelsHidden()
-                            .padding(.trailing, 0)
-                            .onChange(of: apply2) { newValue in
-                                printHalation_darkenMode = newValue
-                            }
-                            .onChange(of: viewModel.currentImgID) {
-                                apply2 = printHalation_darkenMode
-                            }
-                        
-                    }
-
+                    
+                    
+                    
                     // Radius
                     SliderView(
                         label: "Size:",
@@ -71,7 +49,7 @@ struct PrintHalationView: View {
                         formatter: twoDecimal
                     )
                     .focused($focusedField, equals: "radiusMultiplier")
-
+                    
                     // Fade
                     SliderView(
                         label: "Amount:",
@@ -79,24 +57,49 @@ struct PrintHalationView: View {
                         defaultValue: 50,
                         range: 0...100,
                         step: 1,
-                        formatter: wholeNumber
-                    )
+                        formatter: wholeNumber)
                     .focused($focusedField, equals: "opacityMultiplier")
+                    
+                    
+                    Spacer()
+                        .frame(height: 20)
+                    
+                    HStack {
+                        Text("Allow darkening:")
+                            .foregroundStyle(Color("SideBarText"))
+                        Spacer()
+                            .frame(width: 10)
+                        
+                        CheckBox(isOn: $apply2)
+                        
+                        Spacer()
+                        
+                        
+                        
+                    }
+                    
+                    
+                }
+                .onChange(of: apply) {
+                    printHalation_apply = apply
+                }
+                .onChange(of: viewModel.currentImgID) {
+                    apply = printHalation_apply
                 }
                 .onAppear {
                     focusedField = nil
+                    apply = printHalation_apply
                     apply2 = printHalation_darkenMode
                 }
-                .onChange(of: isCollapsed) { newValue in
-                    AppDataManager.shared.setCollapsed(newValue, for: "EnlargerView")
+                
+                .onChange(of: apply2) {
+                    printHalation_darkenMode = apply2
                 }
-            },
-            resetAction: {
-                printHalation_apply = false
-                printHalation_darkenMode = true
-                printHalation_size = 10
-                printHalation_amount = 50
+                .onChange(of: viewModel.currentImgID) {
+                    apply2 = printHalation_darkenMode
+                }
             }
+            
         )
     }
 }

@@ -22,6 +22,9 @@ struct BottomBarView: View {
 		
 		HStack (alignment: .center, spacing: 0) {
 			
+            Spacer()
+                .frame(width: 330)
+            
 			// MARK: - Padding
 			Image(systemName: "photo")
 				.resizable()
@@ -55,7 +58,7 @@ struct BottomBarView: View {
 			
 			// MARK: - Background Color Icons
 			
-			HStack(spacing: 10) {
+			HStack(spacing: 0) {
 				if isColorPickerExpanded {
 					// Show all buttons when expanded
 					ForEach(["BG_Black", "BG_Dark", "BG_Mid", "BG_Light", "BG_White"], id: \.self) { color in
@@ -160,9 +163,10 @@ struct BottomBarView: View {
 			
 		}
 		.padding(.horizontal, 10) // Left and right padding of 20
+        .padding(.vertical, 0)
 		.background(Color("MenuBackground"))
-		.frame(maxWidth: .infinity)
-		
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
 		
 	}
 	

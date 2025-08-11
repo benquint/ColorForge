@@ -18,12 +18,19 @@ struct RawAdjustView: View {
     
     @Binding var isRawAdjustCollapsed: Bool
 
+
     var body: some View {
-        CollapsibleSectionView(
-            title: "Exposure :",
+        SubSection(
+            title: "Exposure",
+            icon: "camera.on.rectangle",
             isCollapsed: $isRawAdjustCollapsed,
+            resetAction: {
+                $exposure.reset(to: 0)
+                $contrast.reset(to: 0)
+                $saturation.reset(to: 0)
+            },
             content: {
-                VStack(alignment: .leading, spacing: 10) {
+                VStack() {
 
                     SliderView(
                         label: "Exposure:",
@@ -55,11 +62,6 @@ struct RawAdjustView: View {
                 .onAppear {
                     focusedField = nil
                 }
-            },
-            resetAction: {
-                $exposure.reset(to: 0)
-                $contrast.reset(to: 0)
-                $saturation.reset(to: 0)
             }
         )
     }

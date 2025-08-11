@@ -61,6 +61,8 @@ struct ContentView: View {
                         LinearStartPointBinding: LinearStartPointBinding,
                         LinearEndPointBinding: LinearEndPointBinding,
                         
+                        aiMaskImageBinding: aiMaskImageBinding,
+                        
                         radialStartPointBinding: radialStartPointBinding,
                         radialEndPointBinding: radialEndPointBinding,
                         radialFeatherBinding: radialFeatherBinding,
@@ -71,11 +73,16 @@ struct ContentView: View {
                         radialOpacityBinding: radialOpacityBinding,
                         showsidebar: $showsidebar,
                         selectedTool: $selectedTool,
-                        isRawAdjustCollapsed: $isRawAdjustCollapsed
+                        isRawAdjustCollapsed: $isRawAdjustCollapsed,
+                        
+                        
+                        aiFeatherBinding: aiFeatherBinding,
+                        aiOpacityBinding: aiOpacityBinding,
+                        aiInvertBinding: aiInvertBinding
                         
                     )
                     .transition(.move(edge: .leading))
-                    .frame(width: imageViewModel.sideBarWidth)
+                    //                    .frame(width: imageViewModel.sideBarWidth)
                 }
                 
                 // Hidden button to bring sidebar back
@@ -115,7 +122,7 @@ struct ContentView: View {
                     Image(systemName: "trash")
                         .resizable()
                         .foregroundColor(Color("SideBarText"))
-                        .frame(width: 1, height: 1)
+                        .frame(width: 0, height: 1)
                         .padding(0)
                     
                 }
@@ -125,7 +132,7 @@ struct ContentView: View {
                 .keyboardShortcut("m", modifiers: [.shift])
                 
                 
-                Spacer()
+                
                 GeometryReader { geo in
                     ZStack {
                         
@@ -141,6 +148,7 @@ struct ContentView: View {
                                 selectedMask: $selectedMask,
                                 LinearStartPointBinding: LinearStartPointBinding,
                                 LinearEndPointBinding: LinearEndPointBinding,
+                                aiMaskImageBinding: aiMaskImageBinding,
                                 
                                 radialStartPointBinding: radialStartPointBinding,
                                 radialEndPointBinding: radialEndPointBinding,
@@ -153,7 +161,7 @@ struct ContentView: View {
                                 selectedTool: $selectedTool
                             )
                             
-//                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            //                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .frame(width: geo.size.width, height: geo.size.height)
                         } else {
                             
@@ -161,7 +169,7 @@ struct ContentView: View {
                             
                             if imageViewModel.processingComplete {
                                 ThumbnailView(imageViewActive: $imageViewActive)
-//                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                //                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                                     .frame(width: geo.size.width, height: geo.size.height)
                             } else {
                                 
@@ -196,10 +204,11 @@ struct ContentView: View {
                                         
                                     }
                                 }
-                                .background(Color(red: 0.22, green: 0.22, blue: 0.22))
-//                                .frame(width: geo.size.width, height: geo.size.height)
+                                .background(Color("MenuAccentDark"))
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                //                                .frame(width: geo.size.width, height: geo.size.height)
                                 
-                        
+                                
                                 
                                 
                             } // First else
@@ -214,15 +223,24 @@ struct ContentView: View {
                                 .opacity(0.8)
                         }
                     }
-                    .frame(width: geo.size.width, height: geo.size.height)
+                    //                    .frame(width: geo.size.width, height: geo.size.height)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .ignoresSafeArea()
                 }
+                .ignoresSafeArea()
             }
+            .padding(0)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea()
             
             BottomBarView()
                 .frame(height: imageViewModel.bottomBarHeight)
+                .background(Color("MenuBackground"))
             
         }
+        .padding(0)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
         .onAppear {
             dataModel.undoManager = undoManager
         }
@@ -298,7 +316,43 @@ struct ContentView: View {
     }
     
     
+    var aiMaskImageBinding: Binding<CIImage?> {
+        guard let maskId = selectedMask else { return .constant(nil) }
+        return dataModel.bindingToAiMaskMaskImage(
+            maskId: maskId,
+            keyPath: \.maskImage,
+            defaultValue: nil
+        )
+    }
     
+    
+    
+    var aiFeatherBinding: Binding<Float> {
+        guard let maskId = selectedMask else { return .constant(5.0) }
+        return dataModel.bindingToAiMaskValue(
+            maskId: maskId,
+            keyPath: \.feather,
+            defaultValue: 5.0
+        )
+    }
+    
+    var aiOpacityBinding: Binding<Float> {
+        guard let maskId = selectedMask else { return .constant(100.0) }
+        return dataModel.bindingToAiMaskValue(
+            maskId: maskId,
+            keyPath: \.opacity,
+            defaultValue: 100.0
+        )
+    }
+    
+    var aiInvertBinding: Binding<Bool> {
+        guard let maskId = selectedMask else { return .constant(false) }
+        return dataModel.bindingToAiMaskValue(
+            maskId: maskId,
+            keyPath: \.invert,
+            defaultValue: false
+        )
+    }
     
     
     

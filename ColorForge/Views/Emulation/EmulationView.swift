@@ -36,6 +36,8 @@ struct EmulationView: View {
     // Scan - TBC
     @Binding var applyScanMode: Bool
     @Binding var applyPFE: Bool
+    @Binding var apply2383: Bool
+    @Binding var apply3513: Bool
     @Binding var offsetRGB: Float
     @Binding var offsetRed: Float
     @Binding var offsetGreen: Float
@@ -45,6 +47,12 @@ struct EmulationView: View {
 
     var body: some View {
         VStack {
+            Divider().overlay(Color("MenuAccent"))
+                .frame(height: 3)
+            
+            Spacer()
+                .frame(height: 20)
+            
             FilmStockView(
                 convertToNeg: $convertToNeg,
                 stockChoice: $stockChoice,
@@ -52,6 +60,12 @@ struct EmulationView: View {
             )
 
             Divider().overlay(Color("MenuAccent"))
+                .frame(height: 3)
+            
+//            GrainTest()
+            
+            Divider().overlay(Color("MenuAccent"))
+                .frame(height: 3)
 
             EnlargerView(
                 applyPrintMode: $applyPrintMode,
@@ -66,11 +80,14 @@ struct EmulationView: View {
             )
             
             Divider().overlay(Color("MenuAccent"))
+                .frame(height: 3)
             
             ScanView(
                 applyPrintMode: $applyPrintMode,
                 applyScanMode: $applyScanMode,
                 applyPFE: $applyPFE,
+                apply2383: $apply2383,
+                apply3513: $apply3513,
                 offsetRGB: $offsetRGB,
                 offsetRed: $offsetRed,
                 offsetGreen: $offsetGreen,
@@ -103,11 +120,6 @@ struct EmulationView: View {
             
             Spacer()
         }
-        .font(.system(.body, design: .rounded, weight: .light))
-        .frame(width: 300, alignment: .topLeading)
-        .background(Color("MenuBackground"))
-        .frame(maxHeight: .infinity)
-        .padding(10)
     }
     
     

@@ -40,12 +40,178 @@ class GrainModel {
         let smallPlateCached = smallPlate.convertToCGImageAndCache()
         fp100PlateSmall = smallPlateCached
         
-        self.demosaic()
+//        self.demosaic()
+        
+        loadGrainIntoCache()
         
     }
     
+    
+    
+    // MARK: - Generate grain
+    
+    private var lastGrainExtent: CGRect = .zero
+    private var lastGrainSize: CGFloat = 0
+    private var lastUiScale: Float = 0
+    private var lastGrainPlate: CIImage?
+    private var lastID: UUID? = nil
+    
+    
+    func generateGrain(_ id: UUID, _ input: CIImage, _ grainSize: CGFloat, _ uiScale: Float, isExport: Bool) -> CIImage {
+        var finalGrain = CIImage(color: .gray).cropped(to: input.extent)
+        
+        if let prevPlate = lastGrainPlate {
+            finalGrain = prevPlate
+        }
+        
+        guard lastID == nil || lastID != id else {
+            return finalGrain
+        }
+        
+        lastID = id
+        
+        // Guard against recalculating if variables havent changed.
+        guard input.extent !=  lastGrainExtent else {
+            return finalGrain
+        }
+        
+        lastGrainExtent = input.extent
+        
+//        guard lastUiScale == uiScale else {
+//            return finalGrain
+//        }
+//        
+//        lastUiScale = uiScale
+        
+        
+
+        
+        func buildNoise(_ scalar: CGFloat, _ image: CIImage) -> (CIImage, CIImage) {
+            
+            let scalarMin = scalar - (scalar * 0.05)
+            let scalarMax = scalar + (scalar * 0.05)
+            let randScalar = CGFloat.random(in: scalarMin...scalarMax)
+            
+            
+            let blur1: Float = 0.25 * Float(randScalar)
+            let blur2: Float = 0.5 * Float(randScalar)
+            let blur3: Float = 1.5 * Float(randScalar)
+            
+
+            
+            var noise = image.semiNoise()
+
+            // need to offset by + 0.134
+            let offsetImage = CIImage(color: CIColor(red: 0.134, green: 0.134, blue: 0.134))
+            
+            noise = noise.add(offsetImage)
+
+            print("Noise scalar \(scalar)")
+            noise = noise.transformed(by: CGAffineTransform(scaleX: randScalar, y: randScalar))
+
+            
+            var blurNoise = blur(noise, blur1)
+            noise = noise.mixGrain(blurNoise, 0.5)
+            
+            
+            blurNoise = blur(noise, blur2)
+            noise = noise.mixGrain(blurNoise, 0.6)
+            
+            
+            blurNoise = blur(noise, blur3)
+            noise = noise.mixGrain(blurNoise, 0.3)
+            
+            
+            let perlin = image.smallPerlin()
+            
+            return (noise, perlin)
+        }
+        
+        
+        func blur(_ blurImage: CIImage, _ blurVal: Float) -> CIImage {
+            let filter = CIFilter.gaussianBlur()
+            filter.inputImage = blurImage
+            filter.radius = blurVal
+            guard let outputImage = filter.outputImage else {
+                print("Grain blur failed")
+                return blurImage }
+            return outputImage
+        }
+        
+        
+        
+        
+        
+        let width = input.extent.width
+        let height = input.extent.height
+        
+        let gray = CIImage(color: .gray)
+        
+        let grainSizeDefault: CGFloat = 5
+        
+        var noiseScalar = CGFloat(uiScale)
+        
+        if isExport {
+            noiseScalar = 1.0
+        }
+        
+        noiseScalar *= 0.4
+        let zoomScale = ImageViewModel.shared.zoomScale
+        print("ZoomScale = \(zoomScale)")
+        
+        var grain1 = gray
+        var grain2 = gray
+        var grain3 = gray
+        
+        
+        var perlin1 = gray
+        var perlin2 = gray
+        var perlin3 = gray
+
+        // Concurrent blur creation
+        let group = DispatchGroup()
+        let queue = DispatchQueue.global(qos: .utility)
+        
+        group.enter()
+        queue.async {
+            (grain1, perlin1) = buildNoise(noiseScalar, input)
+            group.leave()
+        }
+        
+        group.enter()
+        queue.async {
+            (grain2, perlin2) = buildNoise(noiseScalar, input)
+            group.leave()
+        }
+        
+        group.enter()
+        queue.async {
+            (grain3, perlin3) = buildNoise(noiseScalar, input)
+            group.leave()
+        }
+    
+        
+        group.wait()
+        
+        finalGrain = grain1.maskGrain(grain2, grain3, perlin1, perlin2, perlin3)
+        let cropped = finalGrain.cropped(to: input.extent)
+        finalGrain = cropped
+        
+        if !isExport {
+            let cgImage = finalGrain.convertToCGImageAndCache()
+            finalGrain = cgImage
+        }
+        
+        
+        
+        self.lastGrainPlate = finalGrain
+        return finalGrain
+    }
+    
+    
     // Initial load of grain plate
     public var initialGrainPlate: CIImage?
+    public var initialGrainPlate2048: CGImage?
     
     // Once made, we render it to the CVPixelBuffer,
     // then load that back into a CIImage to avoid reprocessing each time
@@ -54,7 +220,7 @@ class GrainModel {
     // Load the grain plate into a shared CIImage object
     private func loadGrainIntoCache() {
         
-        guard let grainURL = Bundle.main.url(forResource: "Grain_LogC_05_smallScale8bit", withExtension: "png") else {
+        guard let grainURL = Bundle.main.url(forResource: "grainMedFormat", withExtension: "jpg") else {
             print("Failed to load GrainDesaturatedP400.png from bundle.")
             return
         }
@@ -64,9 +230,19 @@ class GrainModel {
             return
         }
         
+        let scale = 3000 / grainImage.extent.height
+        let scaled = grainImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        
+        let context = RenderingManager.shared.mainImageContext
+        
+        guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else {
+            return
+        }
         
         // Scaled down for UI, to speed up grain plate creation
         initialGrainPlate = grainImage
+        initialGrainPlate2048 = cgImage 
+        
         print("Successfully Cached Grain Image")
     }
     

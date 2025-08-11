@@ -41,7 +41,21 @@ struct TopbarView: View {
 		VStack(spacing: 0) {
 			ZStack {
                 HStack {
-                    Spacer().frame(width: 30)
+                    Spacer().frame(width: 75)
+                    
+                    // MARK: - Toggle Sidebar
+                    
+                    Image(systemName: "sidebar.left")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .foregroundColor(Color("SideBarText"))
+                        .frame(height: 15)
+                        .padding(5)
+                        .opacity(0.75)
+                        .help("Toggle Sidebar")
+                    
+                    Spacer()
+                        .frame(width: 50)
                     
                     // MARK: - Logo
                     

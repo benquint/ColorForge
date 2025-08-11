@@ -23,11 +23,13 @@ extension ImageItem {
         let appData = AppDataManager.shared
         let settingsFolder = appData.settingsFolder
         let imageCacheFolder = appData.imageCacheFolder
-
+        let maskCacheFolder = appData.maskCacheFolder
+        
         let id = self.id
         let currentURL = self.url
         let imageCacheURL = imageCacheFolder.appendingPathComponent("\(id.uuidString).jpeg")
         let settingsURL = settingsFolder.appendingPathComponent("\(id.uuidString).json")
+        let maskCacheURL = maskCacheFolder.appendingPathComponent("\(id.uuidString).jpeg")
         
         if inputImage == nil {
             if let processImage = self.processImage {
@@ -36,27 +38,38 @@ extension ImageItem {
         } else if let image = inputImage {
             image.saveJpeg(imageCacheURL)
         }
-
+        
         let saveItem = self.toSaveItem()
         appData.saveSettings(for: saveItem)
-
+        
         // Check if this imageURL already exists in the manifest
         let manifest = appData.manifest
         let alreadyExists = manifest.images.contains { $0.imageURL == currentURL }
-
+        
         guard !alreadyExists else {
             // Optional: log skipped duplicate
             print("Manifest already contains entry for \(currentURL.lastPathComponent), skipping append.")
             return
         }
-
-        // Append new ImageManifest entry and save
+        
+        let allMaskIDs =
+        self.maskSettings.linearGradients.map(\.id) +
+        self.maskSettings.radialGradients.map(\.id) +
+        self.maskSettings.aiMasks.map(\.id)
+        
+        let maskEntries: [MaskManifest] = allMaskIDs.map { id in
+            let url = maskCacheFolder.appendingPathComponent("\(id.uuidString).jpeg")
+            return MaskManifest(maskURL: url)
+        }
+        
         let newEntry = ImageManifest(
             imageURL: currentURL,
             settingsURL: settingsURL,
-            previewURL: imageCacheURL
+            previewURL: imageCacheURL,
+            masks: maskEntries
         )
-
+        
+        
         appData.addImageManifestIfNeeded(newEntry)
         print("Appended new image manifest for: \(currentURL.lastPathComponent)")
     }
@@ -165,6 +178,8 @@ extension SaveItem {
 
             applyScanMode: imageItem.applyScanMode,
             applyPFE: imageItem.applyPFE,
+            apply2383: imageItem.apply2383,
+            apply3513: imageItem.apply3513,
             offsetRGB: imageItem.offsetRGB,
             offsetRed: imageItem.offsetRed,
             offsetGreen: imageItem.offsetGreen,
@@ -253,7 +268,7 @@ struct SaveItem: Codable, Equatable {
     // MARK: - Print Halation
     var printHalation_size: Float = 10.0
     var printHalation_amount: Float = 50.0
-    var printHalation_darkenMode: Bool = true
+    var printHalation_darkenMode: Bool = false
     var printHalation_apply: Bool = false
 
     // MARK: - Neg Conversion
@@ -294,6 +309,8 @@ struct SaveItem: Codable, Equatable {
     // MARK: - Scan
     var applyScanMode: Bool = false
     var applyPFE: Bool = false
+    var apply2383: Bool = true
+    var apply3513: Bool = false
     var offsetRGB: Float = 0.0
     var offsetRed: Float = 0.0
     var offsetGreen: Float = 0.0

@@ -196,7 +196,9 @@ struct RawExposureNode: FilterNode {
         }
         
         if applyScanMode {
-            exposureAdjusted += 2.0
+            if convertToNeg {
+                exposureAdjusted += 2.0
+            }
         }
         
         let kernelInput: CIImage = input

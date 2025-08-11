@@ -155,6 +155,7 @@ extension CIImage {
             return tileCropped
         }
         
+        
         // Concurrent blur creation
         let group = DispatchGroup()
         let queue = DispatchQueue.global(qos: .utility)

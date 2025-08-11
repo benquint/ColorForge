@@ -192,4 +192,13 @@ extension CIImage {
 			arguments: [self]
 		) ?? self
 	}
+    
+    func mixNoise(_ noise2: CIImage, _ noise3: CIImage, _ size: Float) -> CIImage {
+        let kernel = CIColorKernelCache.shared.perlinNoiseMix
+        return kernel.apply(
+            extent: self.extent,
+            roiCallback: {$1},
+            arguments: [self, noise2, noise3, size]
+        ) ?? self
+    }
 }

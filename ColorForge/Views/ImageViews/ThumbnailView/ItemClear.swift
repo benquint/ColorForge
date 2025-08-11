@@ -39,7 +39,7 @@ struct ItemClear: View {
                     Image(nsImage: image)
                         .resizable()
                         .scaledToFit()
-                        .padding(thumbModel.padding / backingScaleFactor)
+                        .padding(thumbModel.padding)
                         .frame(width: size, height: size)
                         .opacity(1)
                         .onTapGesture(count: 2) {
@@ -111,9 +111,10 @@ struct ItemClear: View {
                         
                     
                 }
+
                 
             } // Inner ZStack
-            .frame(width: size - ((thumbModel.padding / backingScaleFactor) / 2.0), height: size - ((thumbModel.padding / backingScaleFactor) / 2.0))
+            .frame(width: size - (thumbModel.padding / 2.0), height: size - (thumbModel.padding / 2.0))
             .background(Color(red: 0.22, green: 0.22, blue: 0.22))
             .cornerRadius(8)
             
@@ -192,11 +193,24 @@ struct ItemClear: View {
 				.stroke(isSelected ? Color.gray : Color.clear, lineWidth: 4)
 		)
         
-        .onAppear{
+        .onAppear {
             if item.thumbnailImage == nil {
-                Task (priority: .userInitiated) {
-                    let img = await extractThumbTemp()
-                    tempImage = img
+                Task(priority: .userInitiated) {
+                    if let index = dataModel.items.firstIndex(where: { $0.id == item.id }) {
+                        // Delay
+                        let secs = 0.01 * Double(index)
+                        try? await Task.sleep(nanoseconds: UInt64(secs * 1_000_000_000))
+
+                        // Skip if thumbnail now loaded
+                        if dataModel.items[index].thumbnailImage != nil {
+                            return
+                        }
+
+                        let img = await extractThumbTemp()
+                        await MainActor.run {
+                            tempImage = img
+                        }
+                    }
                 }
             }
         }
@@ -204,6 +218,9 @@ struct ItemClear: View {
 	
     
 
+//    
+
+//
     
     private func extractThumbTemp() async -> NSImage? {
         
@@ -227,7 +244,7 @@ struct ItemClear: View {
         
         return previewImage
     }
-    
+
     
     private func updateItem() {
         if viewModel.currentImgID == item.id {
@@ -281,167 +298,3 @@ struct ItemClear: View {
 	
 }
 
-
-
-
-
-
-
-
-////
-////  ItemClear.swift
-////  ColorForge
-////
-////  Created by admin on 17/07/2025.
-////
-//
-//import SwiftUI
-//
-//struct ItemClear: View {
-//	@EnvironmentObject var dataModel: DataModel
-//	@EnvironmentObject var pipeline: FilterPipeline
-//	@EnvironmentObject var thumbModel: ThumbnailViewModel
-//	
-//	let size: Double
-//	let thumb: Thumbnail
-//	let isSelected: Bool
-//	let onDoubleTap: () -> Void
-//	
-//	var body: some View {
-//		ZStack {
-//            
-//            let screen = NSScreen.main ?? NSScreen.screens.first!
-//            let backingScaleFactor = screen.backingScaleFactor
-//            
-//            if thumb.isLoaded {
-//            
-//                
-//                if let image = thumb.image {
-//                    //
-//                    Image(nsImage: image)
-//                        .resizable()
-//                        .scaledToFit()
-//                        .padding(thumbModel.padding / backingScaleFactor)
-//                        .frame(width: size, height: size)
-//                        .opacity(1)
-//                        .onTapGesture(count: 2) {
-//                            onDoubleTap()
-//                        }
-//                    //					.task(priority: .utility) {
-//                    //						// Wait 1.5 seconds before running any expensive work
-//                    //						if let item = dataModel.items.first(where: { $0.id == thumb.id }) {
-//                    //
-//                    //							try? await Task.sleep(nanoseconds: 3_500_000_000)
-//                    //
-//                    //							if !thumbModel.previewsLoaded {
-//                    //								if  item.debayeredFull == nil  {
-//                    //									await dataModel.debayerFullRes(for: item)
-//                    //								}
-//                    //
-//                    //								// Optional short pause (already present in your code)
-//                    //								try? await Task.sleep(nanoseconds: 500_000_000)
-//                    //
-//                    //								await dataModel.updateThumbAndCacheForItem(for: item)
-//                    //
-//                    //								thumbModel.previewsLoaded = true
-//                    //							}
-//                    //						}
-//                    //					}
-//                        .onAppear{
-//                            
-//                            
-//                            //							DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-//                            //								self.updateThumbnail(item)
-//                            //							}
-//                            
-//                            //							DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-//                            //								if !item.grainPlatesLoaded {
-//                            //									GrainModel.shared.loadUIPlates(item, dataModel)
-//                            //								}
-//                            //							}
-//                        }
-//                }
-//			} else if let placeHolder = thumb.tempImage {
-//				
-//				if placeHolder.size.width > 2.0 {
-//					Image(nsImage: placeHolder)
-//						.resizable()
-//						.scaledToFit()
-//						.padding(thumbModel.padding / backingScaleFactor)
-//						.frame(width: size, height: size)
-//						.opacity(1)
-//						.onTapGesture(count: 2) {
-//							onDoubleTap()
-//						}
-//				}
-//				
-//				
-//			} else {
-//				
-//                ProgressView()
-//                    .padding(thumbModel.padding / backingScaleFactor)
-//                    .frame(width: size, height: size)
-//                    .onAppear{
-//                        processThumbnail(thumb)
-//                    }
-//                
-//            }
-//			
-//		}
-//		.overlay(
-//			RoundedRectangle(cornerRadius: 8)
-//				.stroke(isSelected ? Color.gray : Color.clear, lineWidth: 4)
-//		)
-//	}
-//	
-//    private func processThumbnail(_ thumb: Thumbnail) {
-//        let id = thumb.id
-//
-//        guard let item = dataModel.items.first(where: { $0.id == id }) else {
-//            return
-//        }
-//
-//        DispatchQueue.global(qos: .userInitiated).async {
-//            guard var processed = item.processImage else { return }
-//            processed = processed.transformed(by: CGAffineTransform(scaleX: 0.3, y: 0.3))
-//            guard let nsImage = self.convertCIImage_CG(processed) else { return }
-////            guard let nsImage = self.convertCIImage(processed) else { return }
-//
-//            DispatchQueue.main.async {
-//                // Find index of matching thumbnail
-//                if let index = self.thumbModel.thumbnails.firstIndex(where: { $0.id == id }) {
-//                    self.thumbModel.thumbnails[index].image = nsImage
-//                    self.thumbModel.thumbnails[index].isLoaded = true
-//                }
-//            }
-//        }
-//    }
-//    
-//    
-//    private func convertCIImage(_ input: CIImage) -> NSImage? {
-//        let linear = input.decodeGamma22()
-//        let rep = NSCIImageRep(ciImage: linear)
-//        let nsImage = NSImage(size: linear.extent.size)
-//        nsImage.addRepresentation(rep)
-//        return nsImage
-//    }
-//	
-//	// MUCH QUICKER
-//	private func convertCIImage_CG(_ input: CIImage) -> NSImage? {
-//		let context = RenderingManager.shared.mainImageContext
-//		
-//		// Create a CGImage from the CIImage
-//		guard let cgImage = context.createCGImage(input, from: input.extent) else {
-//			return nil
-//		}
-//		
-//		// Wrap it in an NSImage
-//		let size = NSSize(width: cgImage.width, height: cgImage.height)
-//		let nsImage = NSImage(cgImage: cgImage, size: size)
-//		return nsImage
-//	}
-//
-//	
-//
-//	
-//}

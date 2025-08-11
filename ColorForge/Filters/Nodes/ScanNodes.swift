@@ -17,6 +17,7 @@ import SwiftUI
 
 
 struct OffsetNode: FilterNode {
+    let neg: Bool
 	let applyScanMode: Bool
 	let offsetRGB: Float
 	let offsetRed: Float
@@ -24,7 +25,7 @@ struct OffsetNode: FilterNode {
 	let offsetBlue: Float
 	
 	func apply(to input: CIImage) -> CIImage {
-
+        guard neg else { return input }
 		
 		if applyScanMode {
 
@@ -48,10 +49,12 @@ struct OffsetNode: FilterNode {
 }
 
 struct ScanContrastNode: FilterNode {
+    let neg: Bool
 	let applyScanMode: Bool
 	let scanContrast: Float
 	
 	func apply(to input: CIImage) -> CIImage {
+        guard neg else { return input }
 		if applyScanMode {
 			
 			let contrastNorm = scanContrast / 100.0
@@ -67,13 +70,44 @@ struct ScanContrastNode: FilterNode {
 }
 
 
+struct ScanLutNode: FilterNode {
+    let neg: Bool
+    let blend: Float
+    let applyScanMode: Bool
+    let applyPFE: Bool
+    let apply2383: Bool
+    let apply3513: Bool
+    
+    func apply(to input: CIImage) -> CIImage {
+        guard neg else { return input }
+        if applyScanMode && applyPFE {
+            
+            let display = input.CineonToDisplay()
+            
+            var resourceName = "2383v2"
+            
+            if apply3513 {
+                resourceName = "3513v2"
+            }
+            
+            let lutApplied = input.applyLut(resourceName)
+            
+            let blended = display.blendWithOpacityPercent(lutApplied, blend)
+            
+            return blended.cropped(to: input.extent)
+        } else {return input}
+    }
+}
+
 
 struct Kodak2383Node: FilterNode {
+    let neg: Bool
 	let blend: Float
 	let applyScanMode: Bool
 	let applyPFE: Bool
 	
 	func apply(to input: CIImage) -> CIImage {
+        guard neg else { return input }
 		if applyScanMode && applyPFE {
 			
 			let display = input.CineonToDisplay()
@@ -89,16 +123,23 @@ struct Kodak2383Node: FilterNode {
 }
 
 struct Fujifilm3513Node: FilterNode {
-	let blend: Float
-	
-	
-	func apply(to input: CIImage) -> CIImage {
-		
-		
-		
-		
-		
-		
-		return input
-	}
+    let neg: Bool
+    let blend: Float
+    let applyScanMode: Bool
+    let applyPFE: Bool
+    
+    func apply(to input: CIImage) -> CIImage {
+        guard neg else { return input }
+        if applyScanMode && applyPFE {
+            
+            let display = input.CineonToDisplay()
+            
+            let resourceName = "3513v2"
+            let lutApplied = input.applyLut(resourceName)
+            
+            let blended = display.blendWithOpacityPercent(lutApplied, blend)
+            
+            return blended.cropped(to: input.extent)
+        } else {return input}
+    }
 }

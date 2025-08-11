@@ -6,11 +6,12 @@
 //
 
 import Foundation
-
+import CoreImage
 
 struct MaskSettings: Codable, Equatable {
     var linearGradients: [LinearGradientMask] = []
     var radialGradients: [RadialGradientMask] = []
+    var aiMasks: [AiMask] = []
     
     var selectedMaskID: UUID?
     var selectedMaskType: GradientMaskType?
@@ -20,12 +21,14 @@ struct MaskSettings: Codable, Equatable {
     init(
         linearGradients: [LinearGradientMask] = [],
         radialGradients: [RadialGradientMask] = [],
+        aiMasks: [AiMask] = [],
         selectedMaskID: UUID? = nil,
         selectedMaskType: GradientMaskType? = nil,
         settingsByMaskID: [UUID: MaskParameterSet] = [:]
     ) {
         self.linearGradients = linearGradients
         self.radialGradients = radialGradients
+        self.aiMasks = aiMasks
         self.selectedMaskID = selectedMaskID
         self.selectedMaskType = selectedMaskType
         self.settingsByMaskID = settingsByMaskID
@@ -89,7 +92,7 @@ struct MaskParameterSet: Codable, Equatable {
     // MARK: - Print Halation
     var printHalation_size: Float = 10.0
     var printHalation_amount: Float = 50.0
-    var printHalation_darkenMode: Bool = true
+    var printHalation_darkenMode: Bool = false
     var printHalation_apply: Bool = false
 
     
@@ -173,7 +176,7 @@ struct MaskParameterSet: Codable, Equatable {
 
         printHalation_size: Float = 10.0,
         printHalation_amount: Float = 50.0,
-        printHalation_darkenMode: Bool = true,
+        printHalation_darkenMode: Bool = false,
         printHalation_apply: Bool = false,
         
         
@@ -351,4 +354,75 @@ struct RadialGradientMask: Identifiable, Codable, Equatable, Hashable {
         self.opacity = opacity
     }
     
+}
+
+
+
+struct AiMask: Identifiable, Equatable, Hashable {
+    let id: UUID
+    var maskUrl: URL?
+    var maskImageLoaded: Bool
+    var name: String
+    var feather: Float // Blur amount
+    var invert: Bool
+    var opacity: Float
+    var maskImage: CIImage?
+    
+    
+    init(
+        id: UUID = UUID(),
+        maskUrl: URL?,
+        maskImageLoaded: Bool,
+        name: String,
+        feather: Float = 10.0,
+        invert: Bool = false,
+        opacity: Float = 100,
+        maskImage: CIImage? = nil
+    ) {
+        self.id = id
+        self.maskUrl = maskUrl
+        self.maskImageLoaded = maskImageLoaded
+        self.name = name
+        self.feather = feather
+        self.invert = invert
+        self.opacity = opacity
+        self.maskImage = maskImage
+    }
+    
+}
+
+extension AiMask: Codable {
+    enum CodingKeys: String, CodingKey {
+        case id, maskUrl, maskImageLoaded, name, feather, invert, opacity
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        maskUrl = try container.decode(URL.self, forKey: .maskUrl)
+        maskImageLoaded = try container.decode(Bool.self, forKey: .maskImageLoaded)
+        name = try container.decode(String.self, forKey: .name)
+        feather = try container.decode(Float.self, forKey: .feather)
+        invert = try container.decode(Bool.self, forKey: .invert)
+        opacity = try container.decode(Float.self, forKey: .opacity)
+        if let url = maskUrl,
+           FileManager.default.fileExists(atPath: url.path),
+           let ciImage = CIImage(contentsOf: url) {
+            maskImage = ciImage
+        } else {
+            maskImage = nil
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(maskUrl, forKey: .maskUrl)
+        try container.encode(maskImageLoaded, forKey: .maskImageLoaded)
+        try container.encode(name, forKey: .name)
+        try container.encode(feather, forKey: .feather)
+        try container.encode(invert, forKey: .invert)
+        try container.encode(opacity, forKey: .opacity)
+        // maskImage is intentionally not encoded
+    }
 }
