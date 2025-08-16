@@ -38,6 +38,7 @@ struct ImageItem: Identifiable, Equatable {
     var exifDict: [CFString: Any]? = nil
     var iptcDict: [CFString: Any]? = nil
     var gpsDict: [CFString: Any]? = nil
+    var tiffDict: [CFString: Any]? = nil
     
 
 	// MARK: - Images
@@ -49,8 +50,8 @@ struct ImageItem: Identifiable, Equatable {
 	var thumbCIImage: CIImage? = nil
     var thumbBuffer: CVPixelBuffer? = nil
 	var processImage: CIImage? = nil
-	var thumbnailImage: NSImage? = nil
-	var previewImage: NSImage? = nil
+	var thumbnailImage: CGImage? = nil
+	var previewImage: CGImage? = nil
 	var fullResCiImage: CIImage? = nil
     
     var uiGrainHigh: CIImage? = nil
@@ -137,7 +138,7 @@ struct ImageItem: Identifiable, Equatable {
 	var initTint: Float = 0.0
 
 	// MARK: - Raw Adjust
-	var baselineExposure: Float = 0.0
+    var baselineExposure: Float = -4.0
 	var exposure: Float = 0.0
 	var contrast: Float = 0.0
 	var saturation: Float = 0.0
@@ -621,8 +622,8 @@ struct ImageItem: Identifiable, Equatable {
 		thumbCIImage: CIImage? = nil,
         thumbBuffer: CVPixelBuffer? = nil,
 		processImage: CIImage? = nil,
-		thumbnailImage: NSImage? = nil,
-		previewImage: NSImage? = nil,
+		thumbnailImage: CGImage? = nil,
+		previewImage: CGImage? = nil,
 		fullResCiImage: CIImage? = nil,
         
         uiGrainHigh: CIImage? = nil,
@@ -639,6 +640,7 @@ struct ImageItem: Identifiable, Equatable {
         exifDict: [CFString: Any]? = nil,
         iptcDict: [CFString: Any]? = nil,
         gpsDict: [CFString: Any]? = nil,
+        tiffDict: [CFString: Any]? = nil,
         
         
         // Grain by gate width (Low / High pairs)
@@ -716,7 +718,7 @@ struct ImageItem: Identifiable, Equatable {
 		initTint: Float = 0.0,
 
 		// MARK: - Raw Adjust
-		baselineExposure: Float = 0.0,
+        baselineExposure: Float = -4.0,
 		exposure: Float = 0.0,
 		contrast: Float = 0.0,
 		saturation: Float = 0.0,
@@ -849,6 +851,7 @@ struct ImageItem: Identifiable, Equatable {
         self.exifDict = exifDict
         self.iptcDict = iptcDict
         self.gpsDict = gpsDict
+        self.tiffDict = tiffDict
         
         self.uiGrainHigh = uiGrainHigh
         self.uiGrainLow = uiGrainLow

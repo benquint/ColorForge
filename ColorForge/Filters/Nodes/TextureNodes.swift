@@ -394,8 +394,11 @@ struct RealisticFilmGrainNode: FilterNode {
 // Need to handle is zoomed
 struct NoiseGrainNode: FilterNode {
     let isExport: Bool
+	let applyGrain: Bool
     
     func apply(to input: CIImage) -> CIImage {
+		guard applyGrain else {return input}
+		
 		let width = input.extent.width
 		let height = input.extent.height
 		
@@ -423,10 +426,10 @@ struct NoiseGrainNode: FilterNode {
 		
 		plate = plate.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
 		
-		let result = input.arriOverlay(plate)
+		let result = input.arriSoftLight(plate)
         
-//        return result.cropped(to: input.extent)
-		return input
+        return result.cropped(to: input.extent)
+//		return input
     }
 }
 
@@ -451,7 +454,7 @@ struct NoiseGrainNodeV2: FilterNode {
 struct MTFTestNode: FilterNode {
     func apply(to input: CIImage) -> CIImage {
         
-        guard let chartURL = Bundle.main.url(forResource: "TestChart", withExtension: "tif") else {
+        guard let chartURL = Bundle.main.url(forResource: "TestChart_3000", withExtension: "tif") else {
             print("Failed to load GrainDesaturatedP400.png from bundle.")
             return input
         }

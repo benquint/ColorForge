@@ -36,7 +36,7 @@ struct RawAdjustView: View {
                         label: "Exposure:",
                         binding: $exposure,
                         defaultValue: 0,
-                        range: -4.0...4.0,
+                        range: -6.0...6.0,
                         step: 0.1,
                         formatter: twoDecimal
                     )

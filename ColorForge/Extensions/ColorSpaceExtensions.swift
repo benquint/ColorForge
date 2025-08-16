@@ -205,6 +205,29 @@ extension CIImage {
 		return filter.outputImage!
 	}
 	
+	/*
+	 Sony sGamut.cine to AWG3
+	 
+	 0.974435  0.023802  0.001763
+	-0.089226  1.071257  0.017969
+	-0.035354  0.038226  0.997128
+	 */
+	
+	// Converts the image from Sony sGamut.cine to Arri Wide Gamut 3 using a color matrix
+	func sGamutCineToAWG3() -> CIImage {
+		let filter = CIFilter.colorMatrix()
+		filter.inputImage = self
+		
+		// Each vector is a row of the matrix: [R_in, G_in, B_in, A_in]
+		filter.rVector = CIVector(x: 0.974435, y: 0.023802, z: 0.001763, w: 0.0)
+		filter.gVector = CIVector(x: -0.089226, y: 1.071257, z: 0.017969, w: 0.0)
+		filter.bVector = CIVector(x: -0.035354, y: 0.038226, z: 0.997128, w: 0.0)
+		filter.aVector = CIVector(x: 0, y: 0, z: 0, w: 1) // Keep alpha unchanged
+		filter.biasVector = CIVector(x: 0, y: 0, z: 0, w: 0) // No bias
+		
+		return filter.outputImage!
+	}
+	
 	
 	// Converts the image from Arri Wide Gamut 3 to Display P3 (D65) using a color matrix
 	func AWGtoP3() -> CIImage {
@@ -288,6 +311,15 @@ extension CIImage {
 	
 	func LogC2Lin() -> CIImage {
 		let kernel = CIColorKernelCache.shared.decodeLogC
+		return kernel.apply(
+			extent: self.extent,
+			roiCallback: { $1 },
+			arguments: [self]
+		) ?? self
+	}
+	
+	func slogToLin() -> CIImage {
+		let kernel = CIColorKernelCache.shared.decodeSLog3
 		return kernel.apply(
 			extent: self.extent,
 			roiCallback: { $1 },

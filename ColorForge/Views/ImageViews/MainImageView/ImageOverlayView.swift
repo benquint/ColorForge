@@ -74,7 +74,10 @@ struct ImageOverlayView: View {
     @State private var initialRadialEnd: CGPoint = .zero
     
     
-    
+	
+	@Binding var displayImage: NSImage?
+	
+	
     // MARK: - Body Start
     
     
@@ -89,7 +92,7 @@ struct ImageOverlayView: View {
             
             let backingScale = NSScreen.main?.backingScaleFactor ?? 1.0
             
-            if let image = viewModel.currentPreview {
+            if let image = displayImage {
                 
                 if !viewModel.rendererInitialisedInUI {
                     

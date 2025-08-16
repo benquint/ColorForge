@@ -38,7 +38,7 @@ class BilinearDemosaic: CIFilter {
     }()
 
     static private func getKernel(function: String) -> CIKernel {
-        let url = Bundle.main.url(forResource: "default",
+        let url = Bundle.main.url(forResource: "CIKernels",
                                   withExtension: "metallib")!
         let data = try! Data(contentsOf: url)
         return try! CIKernel(functionName: function,
@@ -85,7 +85,7 @@ class Halation: CIFilter {
     }()
 
     static private func getKernel(function: String) -> CIKernel {
-        let url = Bundle.main.url(forResource: "default",
+        let url = Bundle.main.url(forResource: "CIKernels",
                                   withExtension: "metallib")!
         let data = try! Data(contentsOf: url)
         return try! CIKernel(functionName: function,
@@ -129,7 +129,7 @@ class PrintHalation: CIFilter {
 	}()
 
 	static private func getKernel(function: String) -> CIKernel {
-		let url = Bundle.main.url(forResource: "default",
+		let url = Bundle.main.url(forResource: "CIKernels",
 								  withExtension: "metallib")!
 		let data = try! Data(contentsOf: url)
 		return try! CIKernel(functionName: function,
@@ -188,7 +188,7 @@ class HistogramData: CIFilter {
     }()
 
     static private func getKernel(function: String) -> CIKernel {
-        let url = Bundle.main.url(forResource: "default",
+        let url = Bundle.main.url(forResource: "CIKernels",
                                   withExtension: "metallib")!
         let data = try! Data(contentsOf: url)
         return try! CIKernel(functionName: function,
@@ -237,7 +237,7 @@ class LinearGradientMaskSigmoid: CIFilter {
 	}()
 
 	static private func getKernel(function: String) -> CIKernel {
-		let url = Bundle.main.url(forResource: "default",
+		let url = Bundle.main.url(forResource: "CIKernels",
 								  withExtension: "metallib")!
 		let data = try! Data(contentsOf: url)
 		return try! CIKernel(functionName: function,

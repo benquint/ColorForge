@@ -77,14 +77,14 @@ class RenderingManager {
             .workingColorSpace: NSNull(),
             .outputColorSpace: adobeRGBColorSpace,
             .name: "thumbnailContext",
-            .outputPremultiplied: false,
-            .useSoftwareRenderer: false,
-            .workingFormat: NSNumber(value: CIFormat.RGBAh.rawValue),
-            .allowLowPower: false, // Use high-performance mode
-            .highQualityDownsample: true, // Enable high-quality downsampling
-            .priorityRequestLow: false, // Prioritize high performance
-            .cacheIntermediates: true, // Cache intermediate results for performance
-            .memoryTarget: 4_294_967_296 // 4gb
+			.outputPremultiplied: false,
+			.useSoftwareRenderer: false,
+			.workingFormat: NSNumber(value: CIFormat.RGBAh.rawValue),
+			.allowLowPower: false, // Use high-performance mode
+			.highQualityDownsample: true, // Enable high-quality downsampling
+			.priorityRequestLow: false, // Prioritize high performance
+			.cacheIntermediates: true, // Cache intermediate results for performance
+			.memoryTarget: 4_294_967_296 // 4gb
 		]
 		
 		

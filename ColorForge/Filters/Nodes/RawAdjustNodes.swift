@@ -184,15 +184,22 @@ struct TempAndTintNode: FilterNode {
 struct RawExposureNode: FilterNode {
 
     let exposure: Float
+    let baselineEV: Float
     let convertToNeg: Bool
     let applyScanMode: Bool
     let bwMode: Bool
     let isLut: Bool
-    
+	let logMode: Bool
+	
     func apply(to input: CIImage) -> CIImage {
         var exposureAdjusted = exposure
+		
+        exposureAdjusted += baselineEV
+        
+
+		
         if convertToNeg && !bwMode {
-            exposureAdjusted += 2.0
+            exposureAdjusted += 0.0
         }
         
         if applyScanMode {

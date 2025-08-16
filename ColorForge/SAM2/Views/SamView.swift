@@ -17,7 +17,7 @@ struct SamView: View {
     let viewHeight: CGFloat
     @State var imageSize: CGSize = .zero
     
-    @State private var displayImage: NSImage? = nil
+    @Binding var displayImage: NSImage?
     //	@Binding var imageLoaded: Bool
     
     
@@ -163,10 +163,10 @@ struct SamView: View {
             
             calculateImageSize()
             
-            if let image = viewModel.currentPreview {
+			if let image = displayImage {
                 imageSize = imgSize
                 originalSize = image.size
-                displayImage = image
+//                displayImage = image
             }
             
             segmentationImages = []

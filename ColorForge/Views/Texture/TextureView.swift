@@ -49,14 +49,15 @@ struct TextureView: View {
             Divider().overlay(Color("MenuAccent"))
                 .frame(height: 3)
 
-//            GrainView(
-//                applyGrain: $applyGrain,
-//                grainAmount: $grainAmount,
-//                selectedGateWidth: $selectedGateWidth,
-//                scaleGrainToFormat: $scaleGrainToFormat
-//            )
-//
-//            Divider().overlay(Color("MenuAccent"))
+            GrainView(
+                applyGrain: $applyGrain,
+                grainAmount: $grainAmount,
+                selectedGateWidth: $selectedGateWidth,
+                scaleGrainToFormat: $scaleGrainToFormat
+            )
+
+			Divider().overlay(Color("MenuAccent"))
+				.frame(height: 3)
 
             PrintHalationView(
                 printHalation_size: $printHalation_size,

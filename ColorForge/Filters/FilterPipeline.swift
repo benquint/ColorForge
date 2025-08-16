@@ -707,29 +707,27 @@ class FilterPipeline: ObservableObject {
         
         var result: CIImage
         
-        if inputImage == nil {
-            guard let base = self.unwrapAndReturnImagesSync(item, dataModel) else {
-                print("Failed to unwrap image")
-                return nil }
-            result = base
-        } else {
-            guard let input = inputImage else { return nil}
-            result = input
-        }
+//		if logMode {
+//			result = item.url.asCIImage()
+////			result = result.slogToLin()
+//			result = result.LogC2Lin()
+//		} else {
+			
+			if inputImage == nil {
+				guard let base = self.unwrapAndReturnImagesSync(item, dataModel) else {
+					print("Failed to unwrap image")
+					return nil }
+				result = base
+			} else {
+				guard let input = inputImage else { return nil}
+				result = input
+			}
+			
+//		}
         
         
         
-        
-        
-        
-        if logMode {
-            
-            result = item.url.asCIImage()
-            //            result = result.awg4_to_linearP3()
-            result = result.LogC2Lin()
-            result = result.AWGtoP3()
-            
-        }
+	
         
         
         // TempAndTintNode
@@ -757,10 +755,12 @@ class FilterPipeline: ObservableObject {
         
         //		result = result.replaceResultWithHald()
         
-        if !logMode {
+        if logMode {
             // Convert to AWG
-            result = result.P3ToAWG()
-        }
+//			result = result.sGamutCineToAWG3()
+		} else {
+//			result = result.P3ToAWG()
+		}
 		
 
         
@@ -771,18 +771,22 @@ class FilterPipeline: ObservableObject {
             nodeType: "RawExposureNode",
             globalNode: RawExposureNode(
                 exposure: item.exposure,
+                baselineEV: item.baselineExposure,
                 convertToNeg: item.convertToNeg,
                 applyScanMode: item.applyScanMode,
                 bwMode: item.bwMode,
-                isLut: false
+                isLut: false,
+				logMode: logMode
             ),
             maskBuilder: { settings in
                 RawExposureNode(
                     exposure: settings.exposure,
+                    baselineEV: item.baselineExposure,
                     convertToNeg: item.convertToNeg,
                     applyScanMode: item.applyScanMode,
                     bwMode: item.bwMode,
-                    isLut: false
+                    isLut: false,
+					logMode: logMode
                 )
             }
         )
@@ -897,7 +901,7 @@ class FilterPipeline: ObservableObject {
         
         // THOG NODE
         var thogResult = result
-        thogResult = THOGNode(applyTHOG: item.applyTHOG, isExport: item.isExport, blend: item.blend, variance: item.variance, scale: item.scale).apply(to: result)
+//        thogResult = THOGNode(applyTHOG: item.applyTHOG, isExport: item.isExport, blend: item.blend, variance: item.variance, scale: item.scale).apply(to: result)
         
         
 
@@ -916,7 +920,8 @@ class FilterPipeline: ObservableObject {
             applyGrain: item.applyGrain,
             exportMode: item.isExport,
             nativeLongEdge: nativeLongEdge,
-            isExport: item.isExport
+            isExport: item.isExport,
+			uiScale: item.uiScale
         ).apply(to: result)
         
         // Convert back
@@ -924,6 +929,9 @@ class FilterPipeline: ObservableObject {
         result = result.negToCineon()
         
 
+		result = NoiseGrainNode(
+			isExport: item.isExport, applyGrain: item.applyGrain
+		).apply(to: result)
 		
 //		result = NoiseGrainNodeV2(
 //			isExport: item.isExport,
@@ -1210,8 +1218,49 @@ class FilterPipeline: ObservableObject {
         //        result = TomJamiesonFilter(applyTom: item.applyTom).apply(to: result)
         
 
-//        result = MTFTestNode().apply(to: result)
+		// ****************************************************************** //
 
+//		guard var debugResult = item.debayeredInit else {return nil}
+//		
+//		// TempAndTintNode
+//		debugResult = TempAndTintNode(
+//				targetTemp: item.initTemp,
+//				targetTint: item.initTint,
+//				sourceTemp: item.temp,
+//				sourceTint: item.tint,
+//				convertToNeg: item.convertToNeg
+//		).apply(to: debugResult)
+//		
+//		
+//		debugResult = debugResult.P3ToAWG()
+//		
+//		debugResult = EncodeFromSensorNode(baselineExposure: 0.0).apply(to: debugResult)
+//		
+//		
+//		debugResult = debugResult.LogC2Lin()
+//		
+//		// RawExposureNode
+//		debugResult = RawExposureNode(
+//				exposure: item.exposure,
+//				convertToNeg: item.convertToNeg,
+//				applyScanMode: item.applyScanMode,
+//				bwMode: item.bwMode,
+//				isLut: false
+//		).apply(to: debugResult)
+//		
+//		debugResult = debugResult.Lin2LogC()
+//		
+//		debugSave(debugResult, "Arri_")
+//		
+//		result = debugResult
+		
+		// ****************************************************************** //
+		
+		
+		
+		
+		
+		
         
         if item.applyTHOG {
             
@@ -1265,9 +1314,6 @@ class FilterPipeline: ObservableObject {
                                 dataModel.updateItem(id: id) { item in
                                     item.processImage = finalImage
                                 }
-                                
-                                
-                                    self.processPreview(finalImage, id, dataModel, RenderingManager.shared.mainImageContext)
         
                             } else {
                                 
@@ -1277,6 +1323,9 @@ class FilterPipeline: ObservableObject {
                                
 
                             }
+							
+							HistogramModel.shared.generateDataDebounced(finalImage)
+							
                         } else {
                             dataModel.updateItem(id: id) { item in
                                 item.processImage = finalImage
@@ -1286,7 +1335,7 @@ class FilterPipeline: ObservableObject {
                     
  
                     
-                    HistogramModel.shared.generateDataDebounced(finalImage)
+                    
                 }
             }
         } else {
@@ -1309,37 +1358,17 @@ class FilterPipeline: ObservableObject {
 
         DispatchQueue.global(qos: .userInitiated).async {
 
-            let nsImage = image.convertToNSImageSync()
+            let cgImage = image.convertThumbToCGImageSync()
 
             DispatchQueue.main.async {
                 dataModel.updateItem(id: id) { item in
-                    item.thumbnailImage = nsImage
+                    item.thumbnailImage = cgImage
                 }
             }
         }
     }
     
-    func processPreview(_ image: CIImage, _ id: UUID, _ dataModel: DataModel, _ context: CIContext) {
-        let now = Date()
-        guard now.timeIntervalSince(lastThumbnailRenderTime) >= thumbnailThrottleInterval else {
-            return
-        }
-        lastThumbnailRenderTime = now
-
-        DispatchQueue.global(qos: .userInitiated).async {
-
-            let nsImage = image.convertToNSImageSync()
-
-            DispatchQueue.main.async {
-                dataModel.updateItem(id: id) { item in
-                    item.previewImage = nsImage
-                }
-                
-                ImageViewModel.shared.currentPreview = nsImage
-            }
-        }
-    }
-    
+   
     
  
 
@@ -1411,13 +1440,16 @@ class FilterPipeline: ObservableObject {
 
             }
         } else {
-            if let debayeredBuffer = item.debayeredBuffer {
+			if let debayeredBuffer = PixelBufferCache.shared.get(item.id) {
+                
                 
                 let displayImage = CIImage(cvPixelBuffer: debayeredBuffer)
                 
                 return displayImage
                 
             } else {
+                
+                
                 let ciImage = item.debayeredInit
                 return ciImage
             }

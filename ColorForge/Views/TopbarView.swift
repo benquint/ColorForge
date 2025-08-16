@@ -493,40 +493,7 @@ struct TopbarView: View {
 	
 	// MARK: - View controller functions
 	
-	private func renderPreviewAndThumb() {
-		guard let id = viewModel.currentImgID else { return }
-		guard let item = dataModel.items.first(where: { $0.id == id }) else { return }
-		
-		let context = RenderingManager.shared.thumbnailContext
-		
-		guard let processed = item.processImage else {return}
-		
-		// Make this an async task
-		
-		guard let previewCgImage = context.createCGImage(processed, from: processed.extent) else {
-			return
-		}
-		
-		let fullSize = processed.extent.size
-		let previewImage = NSImage(cgImage: previewCgImage, size: fullSize)
-		
-		
-		let thumb = processed.transformed(by: CGAffineTransform(scaleX: 0.3, y: 0.3))
-		
-		guard let thumbCgImage = context.createCGImage(processed, from: processed.extent) else {
-			return
-		}
-		
-		let thumbSize = thumb.extent.size
-		let thumbImage = NSImage(cgImage: thumbCgImage, size: thumbSize)
-		
-
-			dataModel.updateItem(id: id) { item in
-				item.thumbnailImage = thumbImage
-				item.previewImage = previewImage
-			}
-		
-	}
+	
     
     
     private func copySettings() {
@@ -600,15 +567,10 @@ struct TopbarView: View {
         }
 
         await MainActor.run {
-            let thumbSize = NSSize(width: thumbnailCGImage.width, height: thumbnailCGImage.height)
-            let thumbnailImage = NSImage(cgImage: thumbnailCGImage, size: thumbSize)
-
-            let previewSize = NSSize(width: previewCGImage.width, height: previewCGImage.height)
-            let previewImage = NSImage(cgImage: previewCGImage, size: previewSize)
             
             dataModel.updateItem(id: id) { item in
-                item.thumbnailImage = thumbnailImage
-                item.previewImage = previewImage
+                item.thumbnailImage = thumbnailCGImage
+                item.previewImage = previewCGImage
             }
         }
     }
@@ -672,16 +634,27 @@ struct TopbarView: View {
 		thumbModel.isInitialLoad = true
 
         let panel = NSOpenPanel()
+		
+		var types: [UTType] = [
+			UTType(filenameExtension: "dng"),
+			UTType(filenameExtension: "arw"),
+			UTType(filenameExtension: "raf"),
+			UTType(filenameExtension: "cr2"),
+			UTType(filenameExtension: "cr3"),
+			UTType.tiff,                              // .tiff
+			UTType(filenameExtension: "tif"),          // .tif
+			UTType(filenameExtension: "nef")          // .tif
+		].compactMap { $0 }
 
-        panel.allowedContentTypes = [
-            UTType(filenameExtension: "dng"),
-            UTType(filenameExtension: "arw"),
-            UTType(filenameExtension: "raf"),
-            UTType(filenameExtension: "cr2"),
-            UTType(filenameExtension: "cr3"),
-            UTType.tiff,                              // .tiff
-            UTType(filenameExtension: "tif")          // .tif
-        ].compactMap { $0 }
+		// Add dynamic types for Hasselblad
+		if let hasselbladFFF = UTType(tag: "fff", tagClass: .filenameExtension, conformingTo: .image) {
+			types.append(hasselbladFFF)
+		}
+		if let hasselblad3FR = UTType(tag: "3fr", tagClass: .filenameExtension, conformingTo: .image) {
+			types.append(hasselblad3FR)
+		}
+
+		panel.allowedContentTypes = types
         
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false

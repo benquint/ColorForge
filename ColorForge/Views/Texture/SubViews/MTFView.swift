@@ -81,8 +81,9 @@ struct MTFView: View {
 
 				}
 				.onAppear {
+					apply = applyMTF
 					focusedField = nil
-                    apply = applyMTF
+                    
 				}
 				.onChange(of: isCollapsed) { newValue in
 					AppDataManager.shared.setCollapsed(newValue, for: "MTFView")
@@ -94,6 +95,7 @@ struct MTFView: View {
                     apply = applyMTF
                 }
 			}
+			
 
 		)
 	}

@@ -42,7 +42,7 @@ class GrainModel {
         
 //        self.demosaic()
         
-        loadGrainIntoCache()
+//        loadGrainIntoCache()
         
     }
     
@@ -218,10 +218,10 @@ class GrainModel {
     public var grainPlateCIImage: CIImage?
     
     // Load the grain plate into a shared CIImage object
-    private func loadGrainIntoCache() {
+	func loadGrainIntoCache() {
         
-        guard let grainURL = Bundle.main.url(forResource: "grainMedFormat", withExtension: "jpg") else {
-            print("Failed to load GrainDesaturatedP400.png from bundle.")
+        guard let grainURL = Bundle.main.url(forResource: "grainMedFormat_v2", withExtension: "jpg") else {
+            print("Failed to load grainMedFormat_v2.jpg from bundle.")
             return
         }
         
@@ -236,6 +236,7 @@ class GrainModel {
         let context = RenderingManager.shared.mainImageContext
         
         guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else {
+			print("Failed to create CGImage from Grain Plate")
             return
         }
         

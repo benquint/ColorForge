@@ -731,7 +731,7 @@ struct MasksView: View {
     }
     
     var body: some View {
-        VStack() {
+		VStack(spacing: 0) {
             if let id = viewModel.currentImgID {
                 
                 let items = maskItems(id)

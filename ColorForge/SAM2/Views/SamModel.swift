@@ -180,7 +180,7 @@ class SamModel: ObservableObject {
     
     // MARK: - Soften edges of mask using per-mask feather value
     private func softenMaskEdges(_ mask: CIImage, _ maskId: UUID, _ dataModel: DataModel) -> CIImage {
-        debugSave(mask, "Mask")
+//        debugSave(mask, "Mask")
         
         // Look up the mask's feather setting
         guard let id = ImageViewModel.shared.currentImgID else {return mask}

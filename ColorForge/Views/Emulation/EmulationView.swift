@@ -63,9 +63,9 @@ struct EmulationView: View {
                 .frame(height: 3)
             
 //            GrainTest()
-            
-            Divider().overlay(Color("MenuAccent"))
-                .frame(height: 3)
+//            
+//            Divider().overlay(Color("MenuAccent"))
+//                .frame(height: 3)
 
             EnlargerView(
                 applyPrintMode: $applyPrintMode,

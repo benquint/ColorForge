@@ -225,7 +225,7 @@ struct SaveItem: Codable, Equatable {
     var initTint: Float = 0.0
 
     // MARK: - Raw Adjust
-    var baselineExposure: Float = 0.0
+    var baselineExposure: Float = -4.0
     var exposure: Float = 0.0
     var contrast: Float = 0.0
     var saturation: Float = 0.0

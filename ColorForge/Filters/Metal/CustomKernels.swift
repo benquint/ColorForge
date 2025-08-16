@@ -108,7 +108,7 @@ public final class CIColorKernelCache {
     // ColorSpace
 	
 	let AWG4_to_LinearP3: CIColorKernel
-	
+	let decodeSLog3: CIColorKernel
 	
 	// Realistic Grain
 	let realisticFilmGrain: CIKernel
@@ -139,7 +139,7 @@ public final class CIColorKernelCache {
 	let perlinNoiseSmall: CIColorKernel
     
 	private init() {
-		guard let url = Bundle.main.url(forResource: "default", withExtension: "metallib"),
+		guard let url = Bundle.main.url(forResource: "CIKernels", withExtension: "metallib"),
 			  let data = try? Data(contentsOf: url) else {
 			fatalError("Failed to load metallib")
 		}
@@ -175,6 +175,10 @@ public final class CIColorKernelCache {
 		self.hdrKernel = load("HDRKernel")
 		self.previewHSD = load("previewHueRange")
 		self.hsdKernel = load("hsdKernel")
+		
+		
+		// Sony
+		self.decodeSLog3 = load("decodeSLog3")
 		
 		
 		// Neg convert

@@ -45,6 +45,7 @@ extension ImageItem {
             exifDict: nil,
             iptcDict: nil,
             gpsDict: nil,
+            tiffDict: nil,
             
             
             // Grain by gate width (Low / High pairs)

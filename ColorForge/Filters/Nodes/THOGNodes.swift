@@ -12,107 +12,107 @@ import CoreGraphics
 
 
 
-struct THOGNode: FilterNode {
-    let applyTHOG: Bool
-    let isExport: Bool
-    let blend: Float
-    let variance: Float
-    let scale: Float
-    
-    func apply(to input: CIImage) -> CIImage {
-        
-        // Step 1 = Apply the grain plate using overlay blend (arri ovelay)
-        // Step 2 = Convert to neg
-        // Step 3 = Apply a small amount of softening via MTF Node using 5x4 band
-        // Step 4 = Apply random Perlin Noise based brightening etc
-        // Step 4 = Apply Print Softening
-        // Step 5 = Apply Print Lut
-        // Step 6 = Normalise
-        // Step 7 = Add borders
-        
-        guard applyTHOG else {return input}
-        
-        let aspectRatio = input.extent.width / input.extent.height
-
-        var cropWidth = (input.extent.height / 3.25) * 4.25
-        var cropHeight = input.extent.height
-
-        if aspectRatio < 1.0 {
-            cropWidth = input.extent.width
-            cropHeight = (input.extent.width / 3.25) * 4.25
-        }
-
-
-        let cropped = input.applyingFilter("CICrop", parameters: [
-            "inputRectangle": CIVector(cgRect: CGRect(
-                x: 0, y: 0,
-                width: cropWidth,
-                height: cropHeight
-            ))
-        ])
-
-        var plate = isExport ? GrainModel.shared.fp100PlateLarge : GrainModel.shared.fp100PlateSmall
-
-        // Rotate if plate is landscape and cropped image is portrait
-        let plateIsLandscape = plate.extent.width >= plate.extent.height
-        let croppedIsPortrait = cropped.extent.height > cropped.extent.width
-
-        if plateIsLandscape && croppedIsPortrait {
-            let center = CGPoint(x: plate.extent.midX, y: plate.extent.midY)
-            plate = plate.transformed(
-                by: CGAffineTransform(translationX: -center.x, y: -center.y)
-                    .rotated(by: .pi / 2)
-                    .translatedBy(x: center.y, y: center.x)
-            )
-        }
-
-        // Scale plate so it matches cropped image’s shortest dimension
-        let plateScalar = max(cropped.extent.width, cropped.extent.height) / plate.extent.width
-        plate = plate.transformed(by: CGAffineTransform(scaleX: plateScalar, y: plateScalar))
-
-        // Align plate’s origin to match cropped image’s extent (usually starts at 0,0)
-        let plateAligned = plate.transformed(by: CGAffineTransform(
-            translationX: cropped.extent.origin.x - plate.extent.origin.x,
-            y: cropped.extent.origin.y - plate.extent.origin.y)
-        )
-
-        let grainApplied = cropped.arriSoftLight(plateAligned)
-        
-        let negApplied = grainApplied.applyLut("FPC2N")
-        
-        let mtf1 = MTFCurveNode(
-            applyMTF: true, mtfAmount: 50, format: 9, applyGrain: false, exportMode: isExport, nativeLongEdge: 8000, isExport: isExport
-        ).apply(to: negApplied)
-        
-        let print1 = mtf1.applyLut("FPN2P")
-        
-        let refined = print1.applyLut("FPRefineRGB")
-            
-        let lift = refined.applyLift(-0.11)
-        let gain = lift.multiplyByVal(1.2, 0)
-        
-        
-
-        let dithered2 = gain.dither(0.1)
-        
-        
-        let mtf2 = MTFCurveNode(
-            applyMTF: true, mtfAmount: 80, format: 10, applyGrain: false, exportMode: isExport, nativeLongEdge: 8000, isExport: isExport
-        ).apply(to: dithered2)
-
-
-
-        let perlin = mtf2.perlinColor(scale, variance, blend)
-        
-        let crop2 = perlin.applyingFilter("CICrop", parameters: [
-            "inputRectangle": CIVector(cgRect: cropped.extent)
-        ])
-        
-        return crop2
-    }
-
-}
-
+//struct THOGNode: FilterNode {
+//    let applyTHOG: Bool
+//    let isExport: Bool
+//    let blend: Float
+//    let variance: Float
+//    let scale: Float
+//    
+//    func apply(to input: CIImage) -> CIImage {
+//        
+//        // Step 1 = Apply the grain plate using overlay blend (arri ovelay)
+//        // Step 2 = Convert to neg
+//        // Step 3 = Apply a small amount of softening via MTF Node using 5x4 band
+//        // Step 4 = Apply random Perlin Noise based brightening etc
+//        // Step 4 = Apply Print Softening
+//        // Step 5 = Apply Print Lut
+//        // Step 6 = Normalise
+//        // Step 7 = Add borders
+//        
+//        guard applyTHOG else {return input}
+//        
+//        let aspectRatio = input.extent.width / input.extent.height
+//
+//        var cropWidth = (input.extent.height / 3.25) * 4.25
+//        var cropHeight = input.extent.height
+//
+//        if aspectRatio < 1.0 {
+//            cropWidth = input.extent.width
+//            cropHeight = (input.extent.width / 3.25) * 4.25
+//        }
+//
+//
+//        let cropped = input.applyingFilter("CICrop", parameters: [
+//            "inputRectangle": CIVector(cgRect: CGRect(
+//                x: 0, y: 0,
+//                width: cropWidth,
+//                height: cropHeight
+//            ))
+//        ])
+//
+//        var plate = isExport ? GrainModel.shared.fp100PlateLarge : GrainModel.shared.fp100PlateSmall
+//
+//        // Rotate if plate is landscape and cropped image is portrait
+//        let plateIsLandscape = plate.extent.width >= plate.extent.height
+//        let croppedIsPortrait = cropped.extent.height > cropped.extent.width
+//
+//        if plateIsLandscape && croppedIsPortrait {
+//            let center = CGPoint(x: plate.extent.midX, y: plate.extent.midY)
+//            plate = plate.transformed(
+//                by: CGAffineTransform(translationX: -center.x, y: -center.y)
+//                    .rotated(by: .pi / 2)
+//                    .translatedBy(x: center.y, y: center.x)
+//            )
+//        }
+//
+//        // Scale plate so it matches cropped image’s shortest dimension
+//        let plateScalar = max(cropped.extent.width, cropped.extent.height) / plate.extent.width
+//        plate = plate.transformed(by: CGAffineTransform(scaleX: plateScalar, y: plateScalar))
+//
+//        // Align plate’s origin to match cropped image’s extent (usually starts at 0,0)
+//        let plateAligned = plate.transformed(by: CGAffineTransform(
+//            translationX: cropped.extent.origin.x - plate.extent.origin.x,
+//            y: cropped.extent.origin.y - plate.extent.origin.y)
+//        )
+//
+//        let grainApplied = cropped.arriSoftLight(plateAligned)
+//        
+//        let negApplied = grainApplied.applyLut("FPC2N")
+//        
+//        let mtf1 = MTFCurveNode(
+//            applyMTF: true, mtfAmount: 50, format: 9, applyGrain: false, exportMode: isExport, nativeLongEdge: 8000, isExport: isExport
+//        ).apply(to: negApplied)
+//        
+//        let print1 = mtf1.applyLut("FPN2P")
+//        
+//        let refined = print1.applyLut("FPRefineRGB")
+//            
+//        let lift = refined.applyLift(-0.11)
+//        let gain = lift.multiplyByVal(1.2, 0)
+//        
+//        
+//
+//        let dithered2 = gain.dither(0.1)
+//        
+//        
+//        let mtf2 = MTFCurveNode(
+//            applyMTF: true, mtfAmount: 80, format: 10, applyGrain: false, exportMode: isExport, nativeLongEdge: 8000, isExport: isExport
+//        ).apply(to: dithered2)
+//
+//
+//
+//        let perlin = mtf2.perlinColor(scale, variance, blend)
+//        
+//        let crop2 = perlin.applyingFilter("CICrop", parameters: [
+//            "inputRectangle": CIVector(cgRect: cropped.extent)
+//        ])
+//        
+//        return crop2
+//    }
+//
+//}
+//
 
 
 struct TomJamiesonFilter: FilterNode {

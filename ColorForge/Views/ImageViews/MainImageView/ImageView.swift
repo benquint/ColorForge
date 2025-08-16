@@ -8,9 +8,11 @@
 import SwiftUI
 
 struct ImageView: View {
+	@EnvironmentObject var sam2: SAM2
 	@EnvironmentObject var pipeline: FilterPipeline
 	@EnvironmentObject var dataModel: DataModel
 	@EnvironmentObject var viewModel: ImageViewModel
+	
 	
 	@Binding var image: CIImage?
 	@State private var renderer: Renderer?
@@ -39,6 +41,7 @@ struct ImageView: View {
     @Binding var radialInvertBinding: Bool
     @Binding var radialOpacityBinding: Float
 	
+	@State private var displayImage: NSImage? = nil
 	@Binding var selectedTool: SAMTool?
 	
 	var body: some View {
@@ -62,7 +65,7 @@ struct ImageView: View {
                 if viewModel.sam2MaskMode {
                     
                     SamView(viewWidth: geo.size.width, viewHeight: geo.size.height,
-                            selectedTool: $selectedTool,  aiMaskImageBinding: $aiMaskImageBinding)
+							displayImage: $displayImage, selectedTool: $selectedTool,  aiMaskImageBinding: $aiMaskImageBinding)
                     
                 } else {
                     
@@ -81,7 +84,8 @@ struct ImageView: View {
                         radialHeightBinding: $radialHeightBinding,
                         radialRotationBinding: $radialRotationBinding,
                         radialInvertBinding: $radialInvertBinding,
-                        radialOpacityBinding: $radialOpacityBinding
+						radialOpacityBinding: $radialOpacityBinding,
+						displayImage: $displayImage
                     )
                 }
 				
@@ -92,6 +96,8 @@ struct ImageView: View {
 		.background(Color .white)
 		.onAppear {
             
+			getDisplayImage()
+            setCurrentImaeg()
             viewModel.imageViewActive = true
             
 			// Reuse the shared renderer if it exists, otherwise create a new one
@@ -107,12 +113,19 @@ struct ImageView: View {
             guard let item = dataModel.items.first(where: { $0.id == id }) else {
                 return
             }
+			
+			if item.debayeredBuffer == nil {
+				print("\n\nImageView:\nDebayered buffer is nil\n\n")
+			}
             
-            if item.debayeredInit != nil {
-                FilterPipeline.shared.applyPipelineV2Sync(id, dataModel)
-            } else {
-                print("No ID for image view")
-            }
+            pipeline.applyPipelineV2Sync(id, dataModel)
+            
+//            if item.debayeredInit != nil {
+//				print("\n\nImageView: Getting debayered init\n\n")
+//                FilterPipeline.shared.applyPipelineV2Sync(id, dataModel)
+//            } else {
+//                print("No ID for image view")
+//            }
             
 
             Task(priority: .utility) {
@@ -136,7 +149,39 @@ struct ImageView: View {
 //            }
 //        }
 	}
+    
+    private func setCurrentImaeg() {
+        guard let id = viewModel.currentImgID else { return }
+        guard let item = dataModel.items.first(where: { $0.id == id }) else {return}
+        
+        if let pixelBuffer = PixelBufferCache.shared.get(item.id) {
+            let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+            viewModel.currentImage = ciImage
+        }
+        
+    }
 	
+	
+	private func getDisplayImage() {
+		guard let id = viewModel.currentImgID else { return }
+		guard let item = dataModel.items.first(where: { $0.id == id }) else {return}
+		
+		guard let processed = item.processImage else {
+			print("Image view failed to get processImage from item")
+			return
+		}
+		
+		DispatchQueue.global(qos: .utility).async {
+			if let nsImage = processed.convertToNSImageSync() {
+				
+				DispatchQueue.main.async {
+					displayImage = nsImage
+				}
+			} else {
+				print("ImageView: Failed to convert processImage to displayImage")
+			}
+		}
+	}
     
     func debayerFullRes() async {
         

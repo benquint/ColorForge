@@ -54,8 +54,8 @@ extension CIImage {
         let nsImage = NSImage(cgImage: cgImage, size: size)
         return nsImage
     }
-
-    
+	
+	
     func convertDebayeredToBuffer(_ context: CIContext) async -> CVPixelBuffer? {
         
         let width = Int(self.extent.width)
@@ -72,7 +72,8 @@ extension CIImage {
             kCFAllocatorDefault,
             width,
             height,
-            kCVPixelFormatType_128RGBAFloat, // matches RGBAf format
+//            kCVPixelFormatType_128RGBAFloat, // Full 32bit
+			kCVPixelFormatType_64RGBAHalf, // Half Float
             attrs as CFDictionary,
             &pixelBuffer
         )
@@ -104,7 +105,8 @@ extension CIImage {
             kCFAllocatorDefault,
             width,
             height,
-            kCVPixelFormatType_128RGBAFloat, // matches RGBAf format
+//            kCVPixelFormatType_128RGBAFloat, // matches RGBAf format
+			kCVPixelFormatType_64RGBAHalf,
             attrs as CFDictionary,
             &pixelBuffer
         )
@@ -125,7 +127,33 @@ extension CIImage {
         let thumbScale = 500 / max(self.extent.width, self.extent.height)
         let thumbnail = self.transformed(by: CGAffineTransform(scaleX: thumbScale, y: thumbScale))
 
-        guard let cgImage = context.createCGImage(self, from: self.extent) else {
+        guard let cgImage = context.createCGImage(thumbnail, from: thumbnail.extent) else {
+            return nil
+        }
+        
+        return cgImage
+    }
+	
+	func convertThumbToCGImageSync()  -> CGImage? {
+		let context = RenderingManager.shared.thumbnailContext
+		
+		let thumbScale = 500 / max(self.extent.width, self.extent.height)
+		let thumbnail = self.transformed(by: CGAffineTransform(scaleX: thumbScale, y: thumbScale))
+
+		guard let cgImage = context.createCGImage(thumbnail, from: thumbnail.extent) else {
+			return nil
+		}
+		
+		return cgImage
+	}
+    
+    func convertPreviewToCGImageSync()  -> CGImage? {
+        let context = RenderingManager.shared.thumbnailContext
+        
+        let thumbScale = 500 / max(self.extent.width, self.extent.height)
+        let thumbnail = self.transformed(by: CGAffineTransform(scaleX: thumbScale, y: thumbScale))
+
+        guard let cgImage = context.createCGImage(thumbnail, from: thumbnail.extent) else {
             return nil
         }
         

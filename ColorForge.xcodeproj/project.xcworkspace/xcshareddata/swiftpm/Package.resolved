@@ -1,5 +1,5 @@
 {
-  "originHash" : "fa706de65b8516a732eb55fa515c6cf4bdfecfadb2e762273ff8f59480edd152",
+  "originHash" : "3104b8897361c467365f071cb7a988552cb0d29b7ee8c9a568a4d1cb8e7163ea",
   "pins" : [
     {
       "identity" : "keyboardshortcuts",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "045cf174010beb335fa1d2567d18c057b8787165",
         "version" : "2.3.0"
+      }
+    },
+    {
+      "identity" : "lrucache",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/nicklockwood/LRUCache.git",
+      "state" : {
+        "revision" : "e0e9e039b33db8f2ef39b8e25607e38f46b13584",
+        "version" : "1.1.2"
       }
     },
     {

@@ -57,6 +57,17 @@
                ReferencedContainer = "container:ColorForge.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "84EA52A72E4F6AEA00750988"
+               BuildableName = "MetalKernelsTests.xctest"
+               BlueprintName = "MetalKernelsTests"
+               ReferencedContainer = "container:ColorForge.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

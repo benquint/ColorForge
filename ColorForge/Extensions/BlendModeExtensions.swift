@@ -78,7 +78,7 @@ extension CIImage {
         let kernel = CIColorKernelCache.shared.arriSoftLightBlend
         return kernel.apply(
             extent: self.extent,
-            roiCallback: { _, rect in rect },
+            roiCallback: {$1},
             arguments: [self, blendImage]
         ) ?? self
     }

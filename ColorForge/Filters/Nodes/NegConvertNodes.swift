@@ -123,6 +123,7 @@ struct MTFCurveNode: FilterNode {
 	let exportMode: Bool
 	let nativeLongEdge: Int
 	let isExport: Bool
+	let uiScale: Float
 	
 	func apply(to input: CIImage) -> CIImage {
 		if applyMTF {
@@ -146,16 +147,42 @@ struct MTFCurveNode: FilterNode {
 			default: gateWidth = MTFParameters.mediumFormatWidth             // Fallback
 			}
 			
-//            let width = input.extent.width
-//            let height = input.extent.height
-//            let scaledExtent = input.extent.insetBy(dx: -width * 0.2, dy: -height * 0.2)
-            
+
+			
             let safeInput = input.clampedToExtent()
-//            safeInput = safeInput.crop(scaledExtent)
-            
-            
-            
-			// This will eventually allow the user to scale the values below
+			
+			// Target size used for tests
+			let targetPPMWidth: CGFloat = 600
+			
+			// Calculate the input MM size in pixels based on gatewidth
+			let inputPPM = max(input.extent.width, input.extent.height) / gateWidth
+			
+			// Scale the input ppm to match that of the test target
+			var imageScalar = targetPPMWidth / inputPPM
+			
+			if ImageViewModel.shared.isZoomed {
+				imageScalar /= CGFloat(uiScale)
+			}
+			
+			// Apply the scalar clamping at 1.0 to avoid upscaling
+			let scalar100: CGFloat = min(max(0.4 * imageScalar, 0.0), 1.0)
+			let scalar50:  CGFloat = min(max(0.2 * imageScalar, 0.0), 1.0)
+			let scalar25:  CGFloat = min(max(0.12 * imageScalar, 0.0), 1.0)
+			let scalar10:  CGFloat = min(max(0.05 * imageScalar, 0.0), 1.0)
+
+			print("""
+
+			Line Pairs Per MM Scalars:
+			  100 LP/mm: \(scalar100)
+			   50 LP/mm: \(scalar50)
+			   25 LP/mm: \(scalar25)
+			   10 LP/mm: \(scalar10)
+
+			""")
+			
+			
+			
+	
 			let scalar = (max(input.extent.width, input.extent.height) / CGFloat(nativeLongEdge)) * zoomScalar
 			print("MTF Scalar = \(scalar)")
             
@@ -230,26 +257,26 @@ struct MTFCurveNode: FilterNode {
 			// Gaussian Blur
 			group.enter()
 			queue.async {
-                blur100 = safeInput.downAndUp(lpmm100)
+                blur100 = safeInput.downAndUp(scalar100)
 				group.leave()
 			}
 			
 			group.enter()
 			queue.async {
 
-				blur50 = safeInput.downAndUp(lpmm50)
+				blur50 = safeInput.downAndUp(scalar50)
 				group.leave()
 			}
 			
 			group.enter()
 			queue.async {
-				blur20 = safeInput.downAndUp(lpmm20)
+				blur20 = safeInput.downAndUp(scalar25)
 				group.leave()
 			}
 			
 			group.enter()
 			queue.async {
-				blur10 = safeInput.downAndUp(lpmm10)
+				blur10 = safeInput.downAndUp(scalar10)
 				group.leave()
 			}
 			

@@ -11,7 +11,25 @@
 		848157B12E3A1EC1003965FA /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = 848157B02E3A1EC1003965FA /* ArgumentParser */; };
 		848157CC2E3A3E8B003965FA /* ArgumentParser in Frameworks */ = {isa = PBXBuildFile; productRef = 848157CB2E3A3E8B003965FA /* ArgumentParser */; };
 		84C679102E3A8D7B00BB822E /* CMS_arri.png in Resources */ = {isa = PBXBuildFile; fileRef = 84C6790F2E3A8D7B00BB822E /* CMS_arri.png */; };
+		84C67CBC2E4B5D5B00FB0762 /* LRUCache in Frameworks */ = {isa = PBXBuildFile; productRef = 84C67CBB2E4B5D5B00FB0762 /* LRUCache */; };
+		84EA52872E4F439C00750988 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84EA52862E4F439C00750988 /* CoreFoundation.framework */; };
+		84EA52892E4F43A300750988 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84EA52882E4F43A300750988 /* CoreGraphics.framework */; };
+		84EA528B2E4F43AA00750988 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84EA528A2E4F43AA00750988 /* CoreVideo.framework */; };
+		84EA528D2E4F43B100750988 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84EA528C2E4F43B100750988 /* Foundation.framework */; };
+		84EA528F2E4F43BA00750988 /* ImageIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84EA528E2E4F43BA00750988 /* ImageIO.framework */; };
+		84EA52912E4F43C000750988 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84EA52902E4F43C000750988 /* Metal.framework */; };
+		84EA52932E4F43C700750988 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84EA52922E4F43C700750988 /* QuartzCore.framework */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		84EA52AC2E4F6AEA00750988 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 987BF2412DDDECC7005EF497 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 987BF2482DDDECC7005EF497;
+			remoteInfo = ColorForge;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		848157B42E3A212E003965FA /* CopyFiles */ = {
@@ -23,12 +41,31 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
+		84EA52B52E4F6AEA00750988 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		848157B62E3A212E003965FA /* sam2-cli */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "sam2-cli"; sourceTree = BUILT_PRODUCTS_DIR; };
 		84C6790F2E3A8D7B00BB822E /* CMS_arri.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = CMS_arri.png; sourceTree = "<group>"; };
 		84E8BE952DE5D011006F2C2F /* ColorForge.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = ColorForge.xctestplan; sourceTree = "<group>"; };
+		84EA52862E4F439C00750988 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
+		84EA52882E4F43A300750988 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		84EA528A2E4F43AA00750988 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
+		84EA528C2E4F43B100750988 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		84EA528E2E4F43BA00750988 /* ImageIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ImageIO.framework; path = System/Library/Frameworks/ImageIO.framework; sourceTree = SDKROOT; };
+		84EA52902E4F43C000750988 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		84EA52922E4F43C700750988 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		84EA52A82E4F6AEA00750988 /* MetalKernelsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MetalKernelsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		84EA52D72E4F700F00750988 /* CIKernels.metallib */ = {isa = PBXFileReference; explicitFileType = "archive.metal-library"; includeInIndex = 0; path = CIKernels.metallib; sourceTree = BUILT_PRODUCTS_DIR; };
 		987BF2492DDDECC7005EF497 /* ColorForge.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ColorForge.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -70,6 +107,11 @@
 			path = "sam2-cli";
 			sourceTree = "<group>";
 		};
+		84EA52D82E4F700F00750988 /* CIKernels */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CIKernels;
+			sourceTree = "<group>";
+		};
 		987BF24B2DDDECC7005EF497 /* ColorForge */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -90,12 +132,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		84EA52A52E4F6AEA00750988 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		987BF2462DDDECC7005EF497 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				84EA528B2E4F43AA00750988 /* CoreVideo.framework in Frameworks */,
+				84EA52892E4F43A300750988 /* CoreGraphics.framework in Frameworks */,
+				84EA52912E4F43C000750988 /* Metal.framework in Frameworks */,
+				84EA52932E4F43C700750988 /* QuartzCore.framework in Frameworks */,
+				84EA528F2E4F43BA00750988 /* ImageIO.framework in Frameworks */,
+				84EA52872E4F439C00750988 /* CoreFoundation.framework in Frameworks */,
+				84C67CBC2E4B5D5B00FB0762 /* LRUCache in Frameworks */,
 				848157B12E3A1EC1003965FA /* ArgumentParser in Frameworks */,
 				847245372E1BB9A4003C4A70 /* KeyboardShortcuts in Frameworks */,
+				84EA528D2E4F43B100750988 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -105,6 +162,13 @@
 		848157CA2E3A3E8B003965FA /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				84EA52922E4F43C700750988 /* QuartzCore.framework */,
+				84EA52902E4F43C000750988 /* Metal.framework */,
+				84EA528E2E4F43BA00750988 /* ImageIO.framework */,
+				84EA528C2E4F43B100750988 /* Foundation.framework */,
+				84EA528A2E4F43AA00750988 /* CoreVideo.framework */,
+				84EA52882E4F43A300750988 /* CoreGraphics.framework */,
+				84EA52862E4F439C00750988 /* CoreFoundation.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -116,6 +180,7 @@
 				84E8BE952DE5D011006F2C2F /* ColorForge.xctestplan */,
 				987BF24B2DDDECC7005EF497 /* ColorForge */,
 				848157B72E3A212E003965FA /* sam2-cli */,
+				84EA52D82E4F700F00750988 /* CIKernels */,
 				848157CA2E3A3E8B003965FA /* Frameworks */,
 				987BF24A2DDDECC7005EF497 /* Products */,
 			);
@@ -126,6 +191,8 @@
 			children = (
 				987BF2492DDDECC7005EF497 /* ColorForge.app */,
 				848157B62E3A212E003965FA /* sam2-cli */,
+				84EA52A82E4F6AEA00750988 /* MetalKernelsTests.xctest */,
+				84EA52D72E4F700F00750988 /* CIKernels.metallib */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -156,6 +223,46 @@
 			productReference = 848157B62E3A212E003965FA /* sam2-cli */;
 			productType = "com.apple.product-type.tool";
 		};
+		84EA52A72E4F6AEA00750988 /* MetalKernelsTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 84EA52BB2E4F6AEA00750988 /* Build configuration list for PBXNativeTarget "MetalKernelsTests" */;
+			buildPhases = (
+				84EA52A42E4F6AEA00750988 /* Sources */,
+				84EA52A52E4F6AEA00750988 /* Frameworks */,
+				84EA52A62E4F6AEA00750988 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				84EA52AD2E4F6AEA00750988 /* PBXTargetDependency */,
+			);
+			name = MetalKernelsTests;
+			packageProductDependencies = (
+			);
+			productName = MetalKernelsTests;
+			productReference = 84EA52A82E4F6AEA00750988 /* MetalKernelsTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		84EA52D62E4F700F00750988 /* CIKernels */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 84EA52DB2E4F700F00750988 /* Build configuration list for PBXNativeTarget "CIKernels" */;
+			buildPhases = (
+				84EA52D52E4F700F00750988 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				84EA52D82E4F700F00750988 /* CIKernels */,
+			);
+			name = CIKernels;
+			packageProductDependencies = (
+			);
+			productName = CIKernels;
+			productReference = 84EA52D72E4F700F00750988 /* CIKernels.metallib */;
+			productType = "com.apple.product-type.metal-library";
+		};
 		987BF2482DDDECC7005EF497 /* ColorForge */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 987BF26B2DDDECC9005EF497 /* Build configuration list for PBXNativeTarget "ColorForge" */;
@@ -163,6 +270,7 @@
 				987BF2452DDDECC7005EF497 /* Sources */,
 				987BF2462DDDECC7005EF497 /* Frameworks */,
 				987BF2472DDDECC7005EF497 /* Resources */,
+				84EA52B52E4F6AEA00750988 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -175,6 +283,7 @@
 			packageProductDependencies = (
 				847245362E1BB9A4003C4A70 /* KeyboardShortcuts */,
 				848157B02E3A1EC1003965FA /* ArgumentParser */,
+				84C67CBB2E4B5D5B00FB0762 /* LRUCache */,
 			);
 			productName = ColorForge;
 			productReference = 987BF2492DDDECC7005EF497 /* ColorForge.app */;
@@ -193,8 +302,16 @@
 					848157B52E3A212E003965FA = {
 						CreatedOnToolsVersion = 16.2;
 					};
+					84EA52A72E4F6AEA00750988 = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 987BF2482DDDECC7005EF497;
+					};
+					84EA52D62E4F700F00750988 = {
+						CreatedOnToolsVersion = 16.2;
+					};
 					987BF2482DDDECC7005EF497 = {
 						CreatedOnToolsVersion = 16.3;
+						LastSwiftMigration = 1620;
 					};
 				};
 			};
@@ -210,6 +327,7 @@
 			packageReferences = (
 				847245352E1BB9A4003C4A70 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
 				848157AF2E3A1EC1003965FA /* XCRemoteSwiftPackageReference "swift-argument-parser" */,
+				84C67CBA2E4B5D5B00FB0762 /* XCRemoteSwiftPackageReference "LRUCache" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 987BF24A2DDDECC7005EF497 /* Products */;
@@ -218,11 +336,20 @@
 			targets = (
 				987BF2482DDDECC7005EF497 /* ColorForge */,
 				848157B52E3A212E003965FA /* sam2-cli */,
+				84EA52A72E4F6AEA00750988 /* MetalKernelsTests */,
+				84EA52D62E4F700F00750988 /* CIKernels */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		84EA52A62E4F6AEA00750988 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		987BF2472DDDECC7005EF497 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -241,6 +368,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		84EA52A42E4F6AEA00750988 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		84EA52D52E4F700F00750988 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		987BF2452DDDECC7005EF497 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -249,6 +390,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		84EA52AD2E4F6AEA00750988 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 987BF2482DDDECC7005EF497 /* ColorForge */;
+			targetProxy = 84EA52AC2E4F6AEA00750988 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		848157BB2E3A212E003965FA /* Debug */ = {
@@ -272,6 +421,66 @@
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		84EA52BC2E4F6AEA00750988 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MH3K548CJL;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "Ben-Quinton.MetalKernelsTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ColorForge.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ColorForge";
+			};
+			name = Debug;
+		};
+		84EA52BD2E4F6AEA00750988 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MH3K548CJL;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "Ben-Quinton.MetalKernelsTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ColorForge.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ColorForge";
+			};
+			name = Release;
+		};
+		84EA52DC2E4F700F00750988 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = MH3K548CJL;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MTLLINKER_FLAGS = "-fcikernel";
+				MTL_COMPILER_FLAGS = "-fcikernel";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				VERSIONING_SYSTEM = "";
+			};
+			name = Debug;
+		};
+		84EA52DD2E4F700F00750988 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = MH3K548CJL;
+				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MTLLINKER_FLAGS = "-fcikernel";
+				MTL_COMPILER_FLAGS = "-fcikernel";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				VERSIONING_SYSTEM = "";
 			};
 			name = Release;
 		};
@@ -400,6 +609,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = ColorForge/ColorForge.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
@@ -410,20 +620,31 @@
 				ENABLE_PREVIEWS = YES;
 				EXCLUDED_ARCHS = "";
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/ColorForge/Demosaic/Headers",
+					"$(SRCROOT)/ColorForge/Demosaic/metal-cpp",
+				);
 				INFOPLIST_FILE = ColorForge/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/ColorForge/Demosaic/Lib",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 0.2;
-				MTLLINKER_FLAGS = "-fcikernel";
-				MTL_COMPILER_FLAGS = "-fcikernel";
+				MTLLINKER_FLAGS = "";
+				MTL_COMPILER_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = BenQuinton.ColorForge;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "ColorForge/Demosaic/ColorForge-Bridging-Header.h";
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -433,6 +654,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = ColorForge/ColorForge.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
@@ -445,20 +667,30 @@
 				"EXCLUDED_ARCHS[sdk=*]" = x86_64;
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/ColorForge/Demosaic/Headers",
+					"$(SRCROOT)/ColorForge/Demosaic/metal-cpp",
+				);
 				INFOPLIST_FILE = ColorForge/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/ColorForge/Demosaic/Lib",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 0.2;
-				MTLLINKER_FLAGS = "-fcikernel";
-				MTL_COMPILER_FLAGS = "-fcikernel";
+				MTLLINKER_FLAGS = "";
+				MTL_COMPILER_FLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = BenQuinton.ColorForge;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "ColorForge/Demosaic/ColorForge-Bridging-Header.h";
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -471,6 +703,24 @@
 			buildConfigurations = (
 				848157BB2E3A212E003965FA /* Debug */,
 				848157BC2E3A212E003965FA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		84EA52BB2E4F6AEA00750988 /* Build configuration list for PBXNativeTarget "MetalKernelsTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				84EA52BC2E4F6AEA00750988 /* Debug */,
+				84EA52BD2E4F6AEA00750988 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		84EA52DB2E4F700F00750988 /* Build configuration list for PBXNativeTarget "CIKernels" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				84EA52DC2E4F700F00750988 /* Debug */,
+				84EA52DD2E4F700F00750988 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -512,6 +762,14 @@
 				minimumVersion = 1.6.1;
 			};
 		};
+		84C67CBA2E4B5D5B00FB0762 /* XCRemoteSwiftPackageReference "LRUCache" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/nicklockwood/LRUCache.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.1.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -529,6 +787,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 848157AF2E3A1EC1003965FA /* XCRemoteSwiftPackageReference "swift-argument-parser" */;
 			productName = ArgumentParser;
+		};
+		84C67CBB2E4B5D5B00FB0762 /* LRUCache */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 84C67CBA2E4B5D5B00FB0762 /* XCRemoteSwiftPackageReference "LRUCache" */;
+			productName = LRUCache;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
