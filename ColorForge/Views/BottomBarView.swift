@@ -215,13 +215,44 @@ struct BottomBarView: View {
 
         let items = dataModel.items
         guard !items.isEmpty else { return }
+        
+        guard let item = items.first(where: { $0.id == currentId }) else {
+            print("No item found for ID: \(currentId)")
+            return
+        }
+        
+        item.toDisk()
+        
 
         if let currentIndex = items.firstIndex(where: { $0.id == currentId }) {
             let nextIndex = (currentIndex + 1) % items.count
-            imageViewModel.currentImgID = items[nextIndex].id
-            thumbModel.lastScrolledToID = items[nextIndex].id
+            let newItem = items[nextIndex]
+            imageViewModel.currentImgID = newItem.id
+            thumbModel.lastScrolledToID = newItem.id
+            imageViewModel.nativeWidth = newItem.nativeWidth
+            imageViewModel.nativeHeight = newItem.nativeHeight
+            
             if imageViewModel.imageViewActive {
                 pipeline.applyPipelineV2Sync(items[nextIndex].id, dataModel)
+            }
+            
+            // Then start HR processing with debounce
+            Task {
+                let targetId = newItem.id
+                
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                
+                if let pixelBuffer = PixelBufferCache.shared.get(newItem.id) {
+                    imageViewModel.currentImage = CIImage(cvPixelBuffer: pixelBuffer)
+                    // use ciImage
+                } else {
+                    await dataModel.getDisplay(newItem)
+                }
+                
+                // Check if user is still on the same image
+                if targetId == imageViewModel.currentImgID {
+                    await dataModel.getHR(newItem)
+                }
             }
         }
     }
@@ -231,13 +262,46 @@ struct BottomBarView: View {
 
         let items = dataModel.items
         guard !items.isEmpty else { return }
+        
+        guard let item = items.first(where: { $0.id == currentId }) else {
+            print("No item found for ID: \(currentId)")
+            return
+        }
+        
+        item.toDisk()
 
+        // Navigate first
         if let currentIndex = items.firstIndex(where: { $0.id == currentId }) {
             let previousIndex = (currentIndex - 1 + items.count) % items.count
-            imageViewModel.currentImgID = items[previousIndex].id
-            thumbModel.lastScrolledToID = items[previousIndex].id
+            let newItem = items[previousIndex]
+            
+            imageViewModel.currentImgID = newItem.id
+            thumbModel.lastScrolledToID = newItem.id
+            imageViewModel.nativeWidth = newItem.nativeWidth
+            imageViewModel.nativeHeight = newItem.nativeHeight
+            
             if imageViewModel.imageViewActive {
-                pipeline.applyPipelineV2Sync(items[previousIndex].id, dataModel)
+                pipeline.applyPipelineV2Sync(newItem.id, dataModel)
+            }
+            
+            // Then start HR processing with debounce
+            Task {
+                let targetId = newItem.id
+                
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                
+                if let pixelBuffer = PixelBufferCache.shared.get(newItem.id) {
+                    imageViewModel.currentImage = CIImage(cvPixelBuffer: pixelBuffer)
+                    // use ciImage
+                } else {
+                    await dataModel.getDisplay(newItem)
+                }
+            
+                
+                // Check if user is still on the same image
+                if targetId == imageViewModel.currentImgID {
+                    await dataModel.getHR(newItem)
+                }
             }
         }
     }

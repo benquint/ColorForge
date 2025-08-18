@@ -128,7 +128,8 @@ class MetalDemosaicProcessor {
 	}()
 	
 	private let device: MTLDevice
-	private let commandQueue: MTLCommandQueue
+//	private let commandQueue: MTLCommandQueue
+    private let commandQueues: [MTLCommandQueue] // Changed to array
 	private let computePipelineState: MTLComputePipelineState
 	private let textureCache: CVMetalTextureCache
 	
@@ -139,10 +140,16 @@ class MetalDemosaicProcessor {
 		}
 		self.device = device
 		
-		guard let commandQueue = device.makeCommandQueue() else {
-			throw MetalError.commandQueueCreationFailed
-		}
-		self.commandQueue = commandQueue
+        // Create 3 command queues for parallel processing
+        var queues: [MTLCommandQueue] = []
+        for _ in 0..<3 {
+            guard let queue = device.makeCommandQueue() else {
+                throw MetalError.commandQueueCreationFailed
+            }
+            queues.append(queue)
+        }
+        self.commandQueues = queues
+
 		
 		// Create texture cache for CVPixelBuffer conversion
 		var textureCache: CVMetalTextureCache?
@@ -168,7 +175,8 @@ class MetalDemosaicProcessor {
 		}
 	}
 	
-	func processDemosaic(rawData: RawImageData, coreSize: UInt32 = 16) throws -> CVPixelBuffer {
+//	func processDemosaic(rawData: RawImageData, coreSize: UInt32 = 16) throws -> CVPixelBuffer {
+    func processDemosaic(rawData: RawImageData, coreSize: UInt32 = 16, queueIndex: Int = 0) throws -> CVPixelBuffer {
 		let width = Int(rawData.width)
 		let height = Int(rawData.height)
 		
@@ -202,6 +210,8 @@ class MetalDemosaicProcessor {
 			  let topMarginBuffer = device.makeBuffer(bytes: &topMargin, length: MemoryLayout<UInt32>.size, options: []) else {
 			throw MetalError.bufferCreationFailed
 		}
+        
+        let commandQueue = commandQueues[queueIndex % commandQueues.count]
 		
 		// Create command buffer and encoder
 		guard let commandBuffer = commandQueue.makeCommandBuffer(),

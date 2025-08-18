@@ -469,7 +469,7 @@ struct SidebarView: View {
                 return
             }
             
-            let ids = [id]
+            thumbModel.saveIDs = [id]
             
             dataModel.updateItem(id: id) { item in
                 item.isExport = true
@@ -488,7 +488,7 @@ struct SidebarView: View {
                 if response == .OK, let saveURL = panel.url {
                     viewModel.saveToggled = true
                     Task {
-                        await saveModel.batchSave(ids, dataModel, saveURL)
+                        await saveModel.batchSave(thumbModel.saveIDs, dataModel, saveURL)
                     }
                 }
             }

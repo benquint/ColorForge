@@ -82,6 +82,53 @@ extension CIImage {
 	}
     
     
+    func findMinimum() -> (Float, Float, Float) {
+        let filter = CIFilter.areaMinimum()
+        filter.inputImage = self
+        filter.extent = self.extent
+        guard let output = filter.outputImage else {
+            return (999, 999, 999)
+        }
+        
+        let rgb = output.sampleFloat3()
+        
+        return (rgb.x, rgb.y, rgb.z)
+    }
+    
+    func findMaximum() -> (Float, Float, Float) {
+        let filter = CIFilter.areaMaximum()
+        filter.inputImage = self
+        filter.extent = self.extent
+        guard let output = filter.outputImage else {
+            return (999, 999, 999)
+        }
+        
+        let rgb = output.sampleFloat3()
+        
+        return (rgb.x, rgb.y, rgb.z)
+    }
+    
+    
+    func findAverage_MinMax() -> (Float, Float, Float) {
+        
+        let (rMax, gMax, bMax) = self.findMaximum()
+        let (rMin, gMin, bMin) = self.findMinimum()
+        let (rAvg, gAvg, bAvg) = self.findAverage()
+        
+        let rMedian: Float = (rMax + rMin) / 2
+        let gMedian: Float = (gMax + gMin) / 2
+        let bMedian: Float = (bMax + bMin) / 2
+        
+        let blendFactor: Float = 0.5  // Higher value favors median more, lower than 0.5 favours average
+
+        let r = rMedian * blendFactor + rAvg * (1.0 - blendFactor)
+        let g = gMedian * blendFactor + gAvg * (1.0 - blendFactor)
+        let b = bMedian * blendFactor + bAvg * (1.0 - blendFactor)
+        
+        return (r, g, b)
+        
+    }
+    
 	
 	
 	func findBlackPoint() -> (Float, Float, Float) {

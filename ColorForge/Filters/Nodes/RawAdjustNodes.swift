@@ -196,6 +196,13 @@ struct RawExposureNode: FilterNode {
 		
         exposureAdjusted += baselineEV
         
+        print("""
+            
+            
+            Using baseline EV of: \(baselineEV)
+            
+            
+            """)
 
 		
         if convertToNeg && !bwMode {

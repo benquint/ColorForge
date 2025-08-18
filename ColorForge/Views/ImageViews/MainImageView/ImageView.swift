@@ -129,7 +129,8 @@ struct ImageView: View {
             
 
             Task(priority: .utility) {
-                await debayerFullRes()
+//                await debayerFullRes()
+                await dataModel.getHR(item)
             }
  
 		}

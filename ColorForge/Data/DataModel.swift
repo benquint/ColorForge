@@ -115,11 +115,14 @@ class DataModel: ObservableObject {
                 // Step 2: Create new ImageItems for the rest
                 let newItems = try await createStructs(from: newURLs)
                 
+//                await extractThumbs(newItems)
+                
                 // Step 3: Combine everything locally
                 let allItems = restoredItems + newItems
                 
                 // Capture restoredItems as let for concurrency safety
                 let capturedRestoredItems = restoredItems
+                
                 
                 // Step 4: Append to model and update restored items to trigger UI
                 await MainActor.run {
@@ -140,6 +143,7 @@ class DataModel: ObservableObject {
                 
                 // Step 5: Extract metadata and get camera support info
                 let cameraSupportInfo = await self.getMetaData(allItems)
+                
                 
                 await MainActor.run {
                     self.thumbsFullyLoaded = true
@@ -168,7 +172,154 @@ class DataModel: ObservableObject {
     
     // MARK: - CPP Demosaic
     
+    @discardableResult
+    func getHR(_ item: ImageItem) async -> CIImage? {
+
+        let tiff = item.tiffDict
+        let cameraModel = tiff?[kCGImagePropertyTIFFModel] as? String ?? "Unknown"
+        
+        let originalModel = cameraModel
+        
+        if cameraModel == "GFX100S II" {
+            try? await modifyRAWModel(item, "GFX100S")
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        
+        guard let data = await getData(at: item.url) else {
+            print("Failed to get data")
+            return nil
+        }
+        
+        guard data.cfaPattern == 0 else {
+            print("CFA pattern for \(item.url.lastPathComponent) is not RGGB, skipping GPU Demosaic")
+            return nil
+        }
+        
+        guard let fullBuffer = await demosaicGPU(data, 1) else {
+            print("Failed to Demosaic \(item.url.lastPathComponent)")
+            return nil
+        }
+        
+
+        var fullRes = CIImage(cvPixelBuffer: fullBuffer)
+        
+        let orientation = data.orientation
+        switch orientation {
+        case 0:
+            fullRes = fullRes.oriented(.up)
+        case 3:
+            fullRes = fullRes.oriented(.down)
+        case 5:
+            fullRes = fullRes.oriented(.left)
+        case 6:
+            fullRes = fullRes.oriented(.right)
+        default:
+            fullRes = fullRes.oriented(.up)
+        }
+        
+        let width = Float(item.nativeWidth)
+        let scalar = 8000.0 / width
+        let noiseVal = 2.0 * scalar // 2px base for an image 8000px wide
+        let sharpenVal = noiseVal * 1.5
+        
+        
+        fullRes = fullRes.denoise(noiseVal, sharpenVal)
+        
+        fullRes = fullRes.LogC2Lin()
+        
+        
+        
+        
+        guard let fullResBuffer = fullRes.convertDebayeredToBufferSync() else {
+            print("Scaled buffer creation failed for \(item.url.lastPathComponent)")
+            return nil
+        }
+        
+        
+        
+        PixelBufferHRCache.shared.set(fullResBuffer, for: item.id)
+        
+        
+        if originalModel == "GFX100S II" {
+            try? await modifyRAWModel(item, "GFX100S II")
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        
+        return CIImage(cvPixelBuffer: fullResBuffer)
+    }
     
+    
+    @discardableResult
+    func getDisplay(_ item: ImageItem) async -> CIImage? {
+        
+        let tiff = item.tiffDict
+        let cameraModel = tiff?[kCGImagePropertyTIFFModel] as? String ?? "Unknown"
+        
+        let originalModel = cameraModel
+        
+        if cameraModel == "GFX100S II" {
+            try? await modifyRAWModel(item, "GFX100S")
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        
+        guard let data = await getData(at: item.url) else {
+            print("Failed to get data")
+            return nil
+        }
+        
+        guard data.cfaPattern == 0 else {
+            print("CFA pattern for \(item.url.lastPathComponent) is not RGGB, skipping GPU Demosaic")
+            return nil
+        }
+        
+        guard let fullBuffer = await demosaicGPU(data, 1) else {
+            print("Failed to Demosaic \(item.url.lastPathComponent)")
+            return nil
+        }
+        
+
+        
+
+
+        var display = CIImage(cvPixelBuffer: fullBuffer)
+        
+        let orientation = data.orientation
+        switch orientation {
+        case 0:
+            display = display.oriented(.up)
+        case 3:
+            display = display.oriented(.down)
+        case 5:
+            display = display.oriented(.left)
+        case 6:
+            display = display.oriented(.right)
+        default:
+            display = display.oriented(.up)
+        }
+        
+        display = display.LogC2Lin()
+        
+        let scale = CGFloat(item.uiScale)
+        
+        display = display.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        
+        
+        guard let displayBuffer = display.convertDebayeredToBufferSync() else {
+            print("Scaled buffer creation failed for \(item.url.lastPathComponent)")
+            return nil
+        }
+        
+        
+        
+        PixelBufferCache.shared.set(displayBuffer, for: item.id)
+        
+        if originalModel == "GFX100S II" {
+            try? await modifyRAWModel(item, "GFX100S II")
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        
+        return CIImage(cvPixelBuffer: displayBuffer)
+    }
     
     
     // Swift function to extract raw image data from URL
@@ -278,7 +429,7 @@ class DataModel: ObservableObject {
     }
     
     
-    func demosaicGPU(_ rawData: RawImageData) async -> CVPixelBuffer? {
+    func demosaicGPU(_ rawData: RawImageData, _ index: Int) async -> CVPixelBuffer? {
         
         do {
             // Process with Metal
@@ -287,11 +438,9 @@ class DataModel: ObservableObject {
                 return nil
             }
             
-            let processedBuffer = try metalProcessor.processDemosaic(rawData: rawData, coreSize: 16)
+            let processedBuffer = try metalProcessor.processDemosaic(rawData: rawData, coreSize: 16, queueIndex: index)
             print("Successfully processed with Metal")
             
-            //			metalProcessor.createDebugCIImage(from: rawData)
-            //
             return processedBuffer
         } catch {
             print ("Metal processing failed: \(error)")
@@ -305,24 +454,55 @@ class DataModel: ObservableObject {
         // Create a lookup dictionary for restored items
         let restoredItemsDict = Dictionary(uniqueKeysWithValues: restoredItems.map { ($0.id, $0) })
         
-        // PHASE 1: Collect all raw data sequentially (LibRaw thread safety)
-        var imageDataPairs: [(ImageItem, RawImageData)] = []
+        // Filter items to only supported ones
+        let supportedItems = items.compactMap { item -> (ImageItem, CameraSupportInfo)? in
+            guard let support = supportInfo.first(where: { $0.id == item.id }),
+                  support.isSupported else {
+                if let support = supportInfo.first(where: { $0.id == item.id }) {
+                    if !support.isSupported {
+                        print("Camera isn't supported by LibRaw, skipping: \(item.url.lastPathComponent)")
+                    }
+                } else {
+                    print("No support info found for: \(item.url.lastPathComponent)")
+                }
+                return nil
+            }
+            return (item, support)
+        }
         
-        for item in items {
-            // Find the support info for this item
-            guard let support = supportInfo.first(where: { $0.id == item.id }) else {
-                print("No support info found for: \(item.url.lastPathComponent)")
-                continue
+        // Split into 3 groups and process concurrently
+        let groupSize = max(1, supportedItems.count / 3)
+        let groups = stride(from: 0, to: supportedItems.count, by: groupSize).map {
+            Array(supportedItems[$0..<Swift.min($0 + groupSize, supportedItems.count)])
+        }
+        
+        await withTaskGroup(of: Void.self) { taskGroup in
+            for (groupIndex, group) in groups.enumerated() {
+                taskGroup.addTask {
+                    await self.processImageGroup(group, groupIndex: groupIndex + 1, restoredItemsDict: restoredItemsDict)
+                }
+            }
+        }
+    }
+
+    private func processImageGroup(_ itemSupportPairs: [(ImageItem, CameraSupportInfo)],
+                                  groupIndex: Int,
+                                  restoredItemsDict: [UUID: ImageItem]) async {
+        
+        for (item, support) in itemSupportPairs {
+            
+            
+
+            let cameraModel = support.model
+            
+            let originalModel = cameraModel
+            
+            if cameraModel == "GFX100S II" {
+                try? await modifyRAWModel(item, "GFX100S")
+                try? await Task.sleep(nanoseconds: 50_000_000)
             }
             
-            // Check if camera is supported
-            guard support.isSupported else {
-                print("Camera isn't supported by LibRaw, skipping: \(item.url.lastPathComponent)")
-                continue
-            }
-            
-            try? await modifyRAWModel(item.url, "GFX100S")
-            try? await Task.sleep(nanoseconds: 50_000_000)
+
             
             guard let data = await getData(at: item.url) else {
                 print("Failed to extract data for \(item.url.lastPathComponent)")
@@ -334,60 +514,39 @@ class DataModel: ObservableObject {
                 continue
             }
             
-            imageDataPairs.append((item, data))
-        }
-        
-        // PHASE 2: Split into 3 groups and process concurrently
-        let groupSize = max(1, imageDataPairs.count / 3)
-        let groups = stride(from: 0, to: imageDataPairs.count, by: groupSize).map {
-           Array(imageDataPairs[$0..<Swift.min($0 + groupSize, imageDataPairs.count)])
-        }
-        
-        
-        await withTaskGroup(of: Void.self) { taskGroup in
-            var index = 1
-            
-            for (groupIndex, group) in groups.enumerated() {
-                taskGroup.addTask {
-                    await self.processImageGroup(group, groupIndex: groupIndex + 1, restoredItemsDict: restoredItemsDict)
-                }
-                print("""
-                    Processing group \(index)
-                    """)
-                index += 1
-            }
-        }
-    }
-
-    private func processImageGroup(_ imageDataPairs: [(ImageItem, RawImageData)],
-                                  groupIndex: Int,
-                                  restoredItemsDict: [UUID: ImageItem]) async {
-        
-        for (item, data) in imageDataPairs {
             let chromX = Float(data.chromaticity_x)
             let chromY = Float(data.chromaticity_y)
             
-            guard let fullBuffer = await demosaicGPU(data) else {
+            guard let fullBuffer = await demosaicGPU(data, groupIndex) else {
                 print("Failed to Demosaic \(item.url.lastPathComponent)")
                 continue
             }
             
-            let fullRes = CIImage(cvPixelBuffer: fullBuffer)
-            var scaled = fullRes.transformed(by: CGAffineTransform(scaleX: CGFloat(item.uiScale), y: CGFloat(item.uiScale)))
+            var fullRes = CIImage(cvPixelBuffer: fullBuffer)
+            
+
             
             let orientation = data.orientation
             switch orientation {
             case 0:
-                scaled = scaled.oriented(.up)
+                fullRes = fullRes.oriented(.up)
             case 3:
-                scaled = scaled.oriented(.down)
+                fullRes = fullRes.oriented(.down)
             case 5:
-                scaled = scaled.oriented(.left)
+                fullRes = fullRes.oriented(.left)
             case 6:
-                scaled = scaled.oriented(.right)
+                fullRes = fullRes.oriented(.right)
             default:
-                scaled = scaled.oriented(.up)
+                fullRes = fullRes.oriented(.up)
             }
+            
+            let width = Int(fullRes.extent.width)
+            let height = Int(fullRes.extent.height)
+            
+            let scale = await calculateScale(width: width, height: height)
+            
+            var scaled = fullRes.transformed(by: CGAffineTransform(scaleX: CGFloat(item.uiScale), y: CGFloat(item.uiScale)))
+            
             
             scaled = scaled.LogC2Lin()
             
@@ -407,25 +566,28 @@ class DataModel: ObservableObject {
                     continue
                 }
                 
-//                await MainActor.run {
+                await MainActor.run {
                     self.updateItem(id: item.id) { item in
                         item.temp = temp
                         item.tint = tint
                         item.initTemp = temp
                         item.initTint = tint
+                        item.nativeWidth = width
+                        item.nativeHeight = height
+                        item.uiScale = scale
                     }
-//                }
+                }
             }
             
             // Cache by UUID only
             PixelBufferCache.shared.set(smlBuffer, for: item.id)
             
-//            await MainActor.run {
+            await MainActor.run {
                 self.updateItem(id: item.id) { item in
                     item.debayeredInit = ciImage
                     item.baselineExposure = -4.0
                 }
-//            }
+            }
             
             guard let processedInit = pipeline.applyPipelineV2Sync(item.id, self, ciImage, true) else {
                 print("Pipeline failed for \(item.url.lastPathComponent)")
@@ -434,73 +596,42 @@ class DataModel: ObservableObject {
             
             let evAdjustment = await calculateBaselineEV(item, processedInit)
             
-//            await MainActor.run {
+            await MainActor.run {
                 self.updateItem(id: item.id) { item in
                     item.baselineExposure += evAdjustment
-//                }
+                }
                 
-//                if let processedBal = pipeline.applyPipelineV2Sync(item.id, self, ciImage, true) {
-//                    
-//                    // Check if we have cached images for this item
-//                    if let restoredItem = restoredItemsDict[item.id],
-//                       let cachedPreview = restoredItem.previewImage,
-//                       let cachedThumbnail = restoredItem.thumbnailImage {
-//                        
-//                        // Use cached images
-//                        self.updateItem(id: item.id) { item in
-//                            item.thumbnailImage = cachedThumbnail
-//                            item.previewImage = cachedPreview
-//                        }
-//                        
-//                    } else {
-//                        // Generate new preview/thumbnail
-//                        let previewCGImage = processedBal.convertPreviewToCGImageSync()
-//                        let thumbnailCGImage = processedBal.convertThumbToCGImageSync()
-//                        
-//                        self.updateItem(id: item.id) { item in
-//                            item.thumbnailImage = thumbnailCGImage
-//                            item.previewImage = previewCGImage
-//                        }
-//                    }
-//                }
-            }
-  
-            if let processedBal = pipeline.applyPipelineV2Sync(item.id, self, ciImage, true) {
-                
-                // Check if we have cached images for this item
-                if let restoredItem = restoredItemsDict[item.id],
-                   let cachedPreview = restoredItem.previewImage,
-                   let cachedThumbnail = restoredItem.thumbnailImage {
+                if let processedBal = pipeline.applyPipelineV2Sync(item.id, self, ciImage, true) {
                     
-                    // Use cached images
-//                    await MainActor.run {
+                    // Check if we have cached images for this item
+                    if let restoredItem = restoredItemsDict[item.id],
+                       let cachedPreview = restoredItem.previewImage,
+                       let cachedThumbnail = restoredItem.thumbnailImage {
+                        
+                        
                         self.updateItem(id: item.id) { item in
                             item.thumbnailImage = cachedThumbnail
                             item.previewImage = cachedPreview
                         }
-//                    }
-                    
-                } else {
-                    // Generate new preview/thumbnail
-                    let previewCGImage = processedBal.convertPreviewToCGImageSync()
-                    let thumbnailCGImage = processedBal.convertThumbToCGImageSync()
-                    
-//                    await MainActor.run {
+                        
+                        
+                    } else {
+                        // Generate new preview/thumbnail
+                        let previewCGImage = processedBal.convertPreviewToCGImageSync()
+                        let thumbnailCGImage = processedBal.convertThumbToCGImageSync()
+                        
+                        
                         self.updateItem(id: item.id) { item in
                             item.thumbnailImage = thumbnailCGImage
                             item.previewImage = previewCGImage
                         }
-//                    }
+                    }
                 }
             }
+
             
-            
-            
-            
-            try? await modifyRAWModel(item.url, "GFX100S II")
-            
-            await MainActor.run {
-                // Empty MainActor call to flush pending updates
+            if originalModel == "GFX100S II" {
+                try? await modifyRAWModel(item, "GFX100S II")
             }
         }
     }
@@ -520,7 +651,11 @@ class DataModel: ObservableObject {
     
    // MARK: - Modify Model
     
-    func modifyRAWModel(_ fileURL: URL, _ newModel: String) async throws {
+//    func modifyRAWModel(_ fileURL: URL, _ newModel: String) async throws {
+    func modifyRAWModel(_ item: ImageItem, _ newModel: String) async throws {
+        let fileURL = item.url
+
+        
         guard let scriptPath = Bundle.main.path(forResource: "exiftool", ofType: nil),
               let resourcePath = Bundle.main.resourcePath else {
             throw NSError(domain: "ExifToolNotFound", code: -1)
@@ -559,6 +694,52 @@ class DataModel: ObservableObject {
     }
     
     
+    func getModel(_ item: ImageItem) async throws -> String {
+        let fileURL = item.url
+
+        guard let scriptPath = Bundle.main.path(forResource: "exiftool", ofType: nil),
+              let resourcePath = Bundle.main.resourcePath else {
+            throw NSError(domain: "ExifToolNotFound", code: -1)
+        }
+        
+        let libPath = "\(resourcePath)/lib"
+        
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/perl")
+        process.arguments = ["-I\(libPath)", scriptPath, "-Model", "-s3", fileURL.path]
+        
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+        
+        try process.run()
+        process.waitUntilExit()
+        
+        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        
+        let output = String(data: outputData, encoding: .utf8) ?? ""
+        let error = String(data: errorData, encoding: .utf8) ?? ""
+        
+        print("🔧 Process exit code: \(process.terminationStatus)")
+        if !output.isEmpty { print("🔧 Output: \(output)") }
+        if !error.isEmpty { print("🔧 Error: \(error)") }
+        
+        if process.terminationStatus != 0 {
+            throw NSError(domain: "ExifToolError", code: Int(process.terminationStatus))
+        }
+        
+        // Return the trimmed model name, or throw if empty
+        let modelName = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !modelName.isEmpty else {
+            throw NSError(domain: "ModelNotFound", code: -2, userInfo: [NSLocalizedDescriptionKey: "Camera model not found in file"])
+        }
+        
+        return modelName
+    }
+    
+    
     // MARK: - Baseline EV
     
     private func calculateBaselineEV(_ item: ImageItem, _ debayered: CIImage) async -> Float {
@@ -587,8 +768,8 @@ class DataModel: ObservableObject {
         // ************ Averages ************ //
         
         
-        let (dR, dG, dB) = debayered.findAverage()
-        let (eR, eG, eB) = embedded.findAverage()
+        let (dR, dG, dB) = debayered.findAverage_MinMax()
+        let (eR, eG, eB) = embedded.findAverage_MinMax()
         
         
         let debayeredAvg = (dR + dG + dB) / 3.0
@@ -778,27 +959,37 @@ class DataModel: ObservableObject {
             let cameraMake = tiff?[kCGImagePropertyTIFFMake] as? String ?? "Unknown"
             let cameraModel = tiff?[kCGImagePropertyTIFFModel] as? String ?? "Unknown"
             
+            var model = cameraModel
+            
+            do {
+                let exifModel = try await getModel(item)
+                model = exifModel
+            }
+            catch {
+                print("Exiftool failed to return model")
+            }
+            
+            
+            
             // Debug TIFF dictionary
             if let tiff = tiff {
-                print("📷 Found TIFF data for \(url.lastPathComponent): Make=\(cameraMake), Model=\(cameraModel)")
+                print("📷 Found TIFF data for \(url.lastPathComponent): Make=\(cameraMake), Model=\(model)")
             } else {
                 print("❌ No TIFF dictionary found for: \(url.lastPathComponent)")
             }
-            
-            let scale = await calculateScale(width: width, height: height, rotation: orientation)
-            print("🔍 Scale for \(url.lastPathComponent): \(scale) (w: \(width), h: \(height), rot: \(orientation))")
+    
             
             // Check if camera is supported by LibRaw
-            let isSupported = libRawSupported.isCameraSupported(make: cameraMake, model: cameraModel)
+            let isSupported = libRawSupported.isCameraSupported(make: cameraMake, model: model)
             
             if isSupported {
-                print("✅ Camera \(cameraMake) \(cameraModel) is supported by LibRaw")
+                print("✅ Camera model: \(cameraMake) make:\(model) is supported by LibRaw")
             } else {
-                print("❌ Camera \(cameraMake) \(cameraModel) is NOT supported by LibRaw")
+                print("❌ Camera \(cameraMake) \(model) is NOT supported by LibRaw")
             }
             
             // Add support info
-            supportInfo.append(CameraSupportInfo(id: id, isSupported: isSupported, make: cameraMake, model: cameraModel))
+            supportInfo.append(CameraSupportInfo(id: id, isSupported: isSupported, make: cameraMake, model: model))
             
             // Update the main items array with metadata
             await MainActor.run {
@@ -807,10 +998,6 @@ class DataModel: ObservableObject {
                     item.gpsDict = gps
                     item.iptcDict = iptc
                     item.tiffDict = tiff
-                    item.nativeWidth = width
-                    item.nativeHeight = height
-                    item.nativeRotation = orientation
-                    item.uiScale = scale
                 }
             }
             
@@ -820,20 +1007,25 @@ class DataModel: ObservableObject {
         return supportInfo
     }
     
-    func calculateScale(width: Int, height: Int, rotation: Int) async -> Float {
+    func calculateScale(width: Int, height: Int) async -> Float {
         let screenSize = NSScreen.main?.frame.size ?? CGSize(width: 2048, height: 2048)
         let screenShortEdge = min(screenSize.width, screenSize.height)
         
         let targetSize: CGFloat
         var scale: Float = 1.0
         
+        let aspectRatio = Float(width) / Float(height)
+        let isLandscape = aspectRatio > 1.0
+        
         if screenShortEdge > 2048.0 {
             targetSize = screenShortEdge
             
-            if rotation == 6 || rotation == 8 {
-                scale = Float(targetSize) / Float(width)
-            } else {
+            if isLandscape {
+                // Landscape: scale based on height (shorter dimension)
                 scale = Float(targetSize) / Float(height)
+            } else {
+                // Portrait: scale based on width (shorter dimension)
+                scale = Float(targetSize) / Float(width)
             }
             
             return scale * 0.7
@@ -841,10 +1033,12 @@ class DataModel: ObservableObject {
         } else {
             targetSize = 2048.0
             
-            if rotation == 6 || rotation == 8 {
-                scale = Float(targetSize) / Float(width)
-            } else {
+            if isLandscape {
+                // Landscape: scale based on height (shorter dimension)
                 scale = Float(targetSize) / Float(height)
+            } else {
+                // Portrait: scale based on width (shorter dimension)
+                scale = Float(targetSize) / Float(width)
             }
             
             return scale

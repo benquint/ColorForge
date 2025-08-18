@@ -451,9 +451,9 @@ struct LibRawSupported {
     // HS20EXR / HS22EXR
     // HS30EXR / HS33EXR / HS35EXR
     let HS50EXR: String = "HS50EXR"
-    let GFX_50S: String = "GFX 50S"
-    let GFX_50S_II: String = "GFX 50SII"
-    let GFX_50R: String = "GFX 50R"
+    let GFX_50S: String = "GFX50S"
+    let GFX_50S_II: String = "GFX50S II"
+    let GFX_50R: String = "GFX50R"
     let GFX_100: String = "GFX100"
     let GFX_100S: String = "GFX100S"
     let GFX_100SII: String = "GFX100S II" // Hacked

@@ -221,6 +221,19 @@ extension CIImage {
         return noise
     }
     
+    
+    func denoise(_ noiseLevel: Float, _ sharpnessLevel: Float) -> CIImage {
+        let filter = CIFilter.noiseReduction()
+        filter.inputImage = self
+        filter.noiseLevel = noiseLevel
+        filter.sharpness = sharpnessLevel
+        guard let result = filter.outputImage else {
+            print("\(filter) failed")
+            return self
+        }
+        return result
+    }
+    
     // MARK: - Grain V4
     
     

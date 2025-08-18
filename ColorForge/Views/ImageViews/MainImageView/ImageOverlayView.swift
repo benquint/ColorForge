@@ -90,23 +90,27 @@ struct ImageOverlayView: View {
             
             // MARK: - Image
             
-            let backingScale = NSScreen.main?.backingScaleFactor ?? 1.0
             
             if let image = displayImage {
-                
-                if !viewModel.rendererInitialisedInUI {
+                if let id = viewModel.currentImgID {
                     
-                    Image(nsImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .opacity(viewModel.renderingComplete ? 0 : 1)
-                        .frame(width: viewModel.computedSizeForUI.width, height: viewModel.computedSizeForUI.height)
-                        .onAppear{
-                            viewModel.rendererInitialisedInUI = true
-                        }
-                        .onChange(of: image.size) {
-                            
-                        }
+                    // Check if processed buffer exists in cache
+                    let hasProcessedBuffer = PixelBufferCache.shared.contains(id)
+                    
+                    if !viewModel.rendererInitialisedInUI || !hasProcessedBuffer {
+                        
+                        Image(nsImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .opacity(viewModel.renderingComplete ? 0 : 1)
+                            .frame(width: viewModel.computedSizeForUI.width, height: viewModel.computedSizeForUI.height)
+                            .onAppear{
+                                viewModel.rendererInitialisedInUI = true
+                            }
+                            .onChange(of: image.size) {
+                                
+                            }
+                    }
                 }
             } else {
                 

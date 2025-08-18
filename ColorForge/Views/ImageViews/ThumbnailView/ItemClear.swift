@@ -203,7 +203,7 @@ struct ItemClear: View {
 				Task(priority: .userInitiated) {
 					if let index = dataModel.items.firstIndex(where: { $0.id == item.id }) {
 						// Delay
-						let secs = 0.01 * Double(index)
+						let secs = 0.03 * Double(index)
 						try? await Task.sleep(nanoseconds: UInt64(secs * 1_000_000_000))
 
 
@@ -223,12 +223,8 @@ struct ItemClear: View {
 		}
 
 	}
-	
-	
-	
-	//
-	
-	//
+
+    
 	
 	private func extractThumbTemp() async -> NSImage? {
 		

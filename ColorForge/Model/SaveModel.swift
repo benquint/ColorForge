@@ -81,6 +81,18 @@ class SaveModel {
                     for item in groupItems {
                         let id = item.id
                         let url = item.url
+                        
+                        if let cachedPixelBuffer = PixelBufferHRCache.shared.get(item.id) {
+                            // Use cached high-res image
+                            let ciImage = CIImage(cvPixelBuffer: cachedPixelBuffer)
+                            // Use ciImage here
+                        } else {
+                            // No cached version, generate it
+                            await dataModel.getHR(item)
+                            try? await Task.sleep(nanoseconds: 50_000_000)
+                        }
+                        
+                        
 
                         if let hrImage = FilterPipeline.shared.applyPipelineV2Sync(id, dataModel) {
                             

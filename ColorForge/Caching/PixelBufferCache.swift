@@ -126,4 +126,8 @@ final class PixelBufferCache: NSObject {
 		cache.removeAll()
 		costs.removeAll()
 	}
+    
+    func contains(_ id: UUID) -> Bool {
+        return get(id) != nil
+    }
 }

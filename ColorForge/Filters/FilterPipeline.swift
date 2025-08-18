@@ -1392,7 +1392,7 @@ class FilterPipeline: ObservableObject {
         let rect = viewModel.zoomRect
         
         if isZoomed, rect.width > 0, rect.height > 0 {
-            guard let buffer = item.debayeredFullBuffer else {
+            guard let buffer = PixelBufferHRCache.shared.get(item.id) else {
                 print("Failed to unwrap highres")
                 return nil }
             
@@ -1406,16 +1406,29 @@ class FilterPipeline: ObservableObject {
             ))
             return translated
         } else if item.isExport {
-            if let buffer = item.debayeredFullBuffer  {
-                return CIImage(cvPixelBuffer: buffer)
+            if let pixelBuffer = PixelBufferHRCache.shared.get(item.id) {
+                
+                let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+                return ciImage
                 
             } else {
                 print("Getting full res debayered")
-                let node = DebayerFullNode(rawFileURL: item.url, scale: 1.0)
-                let debayered = node.apply()
                 
-                print("Returning debayered with extent: \(debayered.extent)")
-                return debayered
+                var hr = CIImage(color: .black).cropped(to: CGRect(x: 0, y: 0, width: 1, height: 1))
+                Task {
+                    guard let img = await DataModel.shared.getHR(item) else {
+                        
+                        print("Unwrap image failed to get CIImage from pixelbuffer")
+                        
+                        return
+                    }
+                    
+                    hr = img
+                }
+                
+                if hr.extent.width > 2.0 {
+                    return hr
+                }
             }
             
         } else if ImageViewModel.shared.imageViewActive == false {
@@ -1452,9 +1465,22 @@ class FilterPipeline: ObservableObject {
                 
             } else {
                 
+                var display = CIImage(color: .black).cropped(to: CGRect(x: 0, y: 0, width: 1, height: 1))
                 
-                let ciImage = item.debayeredInit
-                return ciImage
+                Task {
+                    guard let img = await DataModel.shared.getDisplay(item) else {
+                        
+                        print("Unwrap image failed to get CIImage from pixelbuffer")
+                        
+                        return
+                    }
+                    
+                    display = img
+                }
+                
+                if display.extent.width > 2.0 {
+                    return display
+                }
             }
         }
         return nil
