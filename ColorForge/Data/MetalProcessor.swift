@@ -27,6 +27,8 @@ struct RawImageData {
 	let camToAWG3: [Float] // 3x3 matrix as 9-element array (row-major)
 	let rMul: Float
 	let bMul: Float
+    let chromaticity_x: Double
+    let chromaticity_y: Double
 	
 	// Convenience computed property to get the 3x3 matrix
 	var colorMatrix: [[Float]] {

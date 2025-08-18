@@ -265,6 +265,9 @@ struct ContentView: View {
             UTType(filenameExtension: "raf"),
             UTType(filenameExtension: "cr2"),
             UTType(filenameExtension: "cr3"),
+            UTType(filenameExtension: "iiq"),
+            UTType(filenameExtension: "fff"),
+            UTType(filenameExtension: "nef"),
             UTType.tiff,                              // .tiff
             UTType(filenameExtension: "tif")          // .tif
         ].compactMap { $0 }

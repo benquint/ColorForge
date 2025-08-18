@@ -161,7 +161,7 @@ struct WhiteBalanceView: View {
                         label: "Temperature:",
                         binding: $temp,
                         defaultValue: initTemp,
-                        range: 2000.0...10000.0,
+                        range: 3000.0...10000.0,
                         step: 1,
                         formatter: wholeNumber
                     )

@@ -238,9 +238,14 @@ enum CFAPattern : uint { CFA_RGGB=0, CFA_BGGR=1, CFA_GRBG=2, CFA_GBRG=3 };
 			
 
 			// compute per-channel clip thresholds
-			float clipRed   = clipLevel * rMul;
-			float clipGreen = clipLevel;       // G multiplier is always 1.0
-			float clipBlue  = clipLevel * bMul;
+//			float clipRed   = clipLevel * rMul;
+//			float clipGreen = clipLevel;       // G multiplier is always 1.0
+//			float clipBlue  = clipLevel * bMul;
+            
+            
+            float clipRed   = clipLevel / rMul;
+            float clipGreen = clipLevel;       // G multiplier is always 1.0
+            float clipBlue  = clipLevel / bMul;
 
 			// clamp each channel individually
 			float3 cam1 = float3(

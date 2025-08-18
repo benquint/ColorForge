@@ -531,6 +531,9 @@ struct TopbarView: View {
                                     copied.apply(to: &item)
                                 }
                             }
+                            
+                            // Pause for 0.05 seconds
+                            try? await Task.sleep(nanoseconds: 50_000_000)
 
                             // Process image
                             guard let processed = await pipeline.applyPipelineV2Sync(id, dataModel) else {

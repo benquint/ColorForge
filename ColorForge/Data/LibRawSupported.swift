@@ -17,20 +17,20 @@ extension LibRawSupported {
     ///   - model: Full camera model (e.g., "Pentax 645D")
     /// - Returns: True if the camera model is supported
     func isCameraSupported(make: String, model: String) -> Bool {
-        print("🔍 DEBUG: Input make: '\(make)', model: '\(model)'")
+//        print("🔍 DEBUG: Input make: '\(make)', model: '\(model)'")
         
         // Clean the model by removing the make prefix
         let cleanedModel = cleanModelName(make: make, model: model)
-        print("🔍 DEBUG: Cleaned model: '\(cleanedModel)'")
+//        print("🔍 DEBUG: Cleaned model: '\(cleanedModel)'")
         
         // Get all supported models from the struct
         let supportedModels = getAllSupportedModels()
-        print("🔍 DEBUG: Total supported models: \(supportedModels.count)")
-        print("🔍 DEBUG: First 10 supported models: \(Array(supportedModels.prefix(10)))")
+//        print("🔍 DEBUG: Total supported models: \(supportedModels.count)")
+//        print("🔍 DEBUG: First 10 supported models: \(Array(supportedModels.prefix(10)))")
         
         // Look specifically for 645D
         let pentax645Models = supportedModels.filter { $0.contains("645") }
-        print("🔍 DEBUG: Pentax 645 models found: \(pentax645Models)")
+//        print("🔍 DEBUG: Pentax 645 models found: \(pentax645Models)")
         
         // Check if any supported model matches (case-insensitive)
         let isSupported = supportedModels.contains { supportedModel in
@@ -38,21 +38,21 @@ extension LibRawSupported {
             let normalizedCleaned = cleanedModel.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
             
             if normalizedSupported == normalizedCleaned {
-                print("🔍 DEBUG: MATCH FOUND! '\(normalizedSupported)' == '\(normalizedCleaned)'")
+//                print("🔍 DEBUG: MATCH FOUND! '\(normalizedSupported)' == '\(normalizedCleaned)'")
                 return true
             }
             return false
         }
         
         if !isSupported {
-            print("🔍 DEBUG: No exact match found")
+//            print("🔍 DEBUG: No exact match found")
             // Try to find close matches for debugging
             let closeMatches = supportedModels.filter { supportedModel in
                 supportedModel.lowercased().contains(cleanedModel.lowercased()) ||
                 cleanedModel.lowercased().contains(supportedModel.lowercased())
             }
             if !closeMatches.isEmpty {
-                print("🔍 DEBUG: Close matches found: \(closeMatches)")
+//                print("🔍 DEBUG: Close matches found: \(closeMatches)")
             }
         }
         
@@ -65,7 +65,7 @@ extension LibRawSupported {
         let trimmedMake = make.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        print("🔍 DEBUG: trimmedMake: '\(trimmedMake)', trimmedModel: '\(trimmedModel)'")
+//        print("🔍 DEBUG: trimmedMake: '\(trimmedMake)', trimmedModel: '\(trimmedModel)'")
         
         var cleanedModel = trimmedModel
         
@@ -83,7 +83,7 @@ extension LibRawSupported {
             let makePrefix = trimmedMake.lowercased()
             let modelLower = trimmedModel.lowercased()
             
-            print("🔍 DEBUG: makePrefix: '\(makePrefix)', modelLower: '\(modelLower)'")
+//            print("🔍 DEBUG: makePrefix: '\(makePrefix)', modelLower: '\(modelLower)'")
             
             if modelLower.hasPrefix(makePrefix) {
                 // Remove the make and any following whitespace/punctuation
@@ -452,10 +452,11 @@ struct LibRawSupported {
     // HS30EXR / HS33EXR / HS35EXR
     let HS50EXR: String = "HS50EXR"
     let GFX_50S: String = "GFX 50S"
-    let GFX_50S_II: String = "GFX 50S II"
+    let GFX_50S_II: String = "GFX 50SII"
     let GFX_50R: String = "GFX 50R"
-    let GFX_100: String = "GFX 100"
-    let GFX_100S: String = "GFX 100S"
+    let GFX_100: String = "GFX100"
+    let GFX_100S: String = "GFX100S"
+    let GFX_100SII: String = "GFX100S II" // Hacked
     let X_Pro1: String = "X-Pro1"
     let X_Pro2: String = "X-Pro2"
     let X_Pro3: String = "X-Pro3"

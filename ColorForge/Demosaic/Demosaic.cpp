@@ -44,60 +44,127 @@ struct BlackRGB { float r, g, b; };
 // - Returns R/G/B black levels = global + per-channel + pattern-map cell for that site.
 static BlackRGB compute_black_levels(LibRaw& raw, uint32_t LM, uint32_t TM)
 {
-	const auto& cd = raw.imgdata.color;
-	
-	const int global = int(cd.black);
-	
-	// Per-channel corrections: order is R, G1, B, G2 in LibRaw
-	const int offR  = int(cd.cblack[0]);
-	const int offG1 = int(cd.cblack[1]);
-	const int offB  = int(cd.cblack[2]);
-	const int offG2 = int(cd.cblack[3]);
-	
-	const unsigned pw = cd.cblack[4];
-	const unsigned ph = cd.cblack[5];
-	
-	// Helper to read the pattern-map value at visible phase (LM,TM)
-	auto map_at = [&](unsigned x, unsigned y) -> int {
-		if (pw == 0u || ph == 0u) return 0;              // no map
-		const unsigned ix = (LM + x) % pw;
-		const unsigned iy = (TM + y) % ph;
-		const unsigned* map = &cd.cblack[6];
-		return int(map[iy * pw + ix]);
-	};
-	
-	// Find which cell (within one 2×2) is R, which is B, and the two Greens
-	// We look at the 2×2 block starting at the visible origin phase.
-	int rMap = 0, bMap = 0, g1Map = 0, g2Map = 0;
-	bool g1Set = false;
-	
-	for (unsigned dy = 0; dy < 2; ++dy) {
-		for (unsigned dx = 0; dx < 2; ++dx) {
-			int code = raw.COLOR(int(LM + dx), int(TM + dy)); // 0=R, 1/3=G, 2=B
-			int mv   = map_at(dx, dy);
-			if (code == 0)       rMap = mv;
-			else if (code == 2)  bMap = mv;
-			else { // green (1 or 3)
-				if (!g1Set) { g1Map = mv; g1Set = true; }
-				else         { g2Map = mv; }
-			}
-		}
-	}
-	
-	// Combine: global + per-channel + pattern-map
-	const float rBlack = float(global + offR  + rMap);
-	const float gBlack = float(global + ((offG1 + g1Map) + (offG2 + g2Map)) * 0.5f);
-	const float bBlack = float(global + offB  + bMap);
-	
-	// Debug
-	std::cerr << "Black (global/per-chan/map @phase LM=" << LM << ", TM=" << TM << "): "
-	<< " R=" << rBlack
-	<< " G=" << gBlack
-	<< " B=" << bBlack << "\n";
-	
-	return { rBlack, gBlack, bBlack };
-}
+    const auto& cd = raw.imgdata.color;
+    const auto& rd = raw.imgdata.rawdata;
 
+    const int global = int(cd.black);
+
+    // Per-channel corrections: order is R, G1, B, G2 in LibRaw
+    const int offR  = int(cd.cblack[0]);
+    const int offG1 = int(cd.cblack[1]);
+    const int offB  = int(cd.cblack[2]);
+    const int offG2 = int(cd.cblack[3]);
+
+    const unsigned pw = cd.cblack[4];
+    const unsigned ph = cd.cblack[5];
+
+    // Print all black level data
+    std::cout << "\n=== Black Level Data ===" << std::endl;
+    std::cout << "Global black: " << global << std::endl;
+    std::cout << "Per-channel cblack[0-3]: R=" << offR << ", G1=" << offG1 << ", B=" << offB << ", G2=" << offG2 << std::endl;
+    std::cout << "Pattern size: pw=" << pw << ", ph=" << ph << std::endl;
+    
+    // Print Phase One specific black levels (corrected access)
+    std::cout << "\n=== Phase One Black Levels ===" << std::endl;
+    if (rd.ph1_cblack != nullptr) {
+        std::cout << "ph1_cblack: [" << rd.ph1_cblack[0][0] << ", "
+                  << rd.ph1_cblack[0][1] << "]" << std::endl;
+    } else {
+        std::cout << "ph1_cblack: nullptr" << std::endl;
+    }
+    
+    if (rd.ph1_rblack != nullptr) {
+        std::cout << "ph1_rblack: [" << rd.ph1_rblack[0][0] << ", "
+                  << rd.ph1_rblack[0][1] << "]" << std::endl;
+    } else {
+        std::cout << "ph1_rblack: nullptr" << std::endl;
+    }
+    
+    // Print black_stat data
+    std::cout << "\n=== Black Statistics ===" << std::endl;
+    std::cout << "Black statistics (black_stat[8]):" << std::endl;
+    std::cout << "  Pixel value sums: R=" << cd.black_stat[0] << ", G1=" << cd.black_stat[1]
+              << ", B=" << cd.black_stat[2] << ", G2=" << cd.black_stat[3] << std::endl;
+    std::cout << "  Pixel counts: R=" << cd.black_stat[4] << ", G1=" << cd.black_stat[5]
+              << ", B=" << cd.black_stat[6] << ", G2=" << cd.black_stat[7] << std::endl;
+    
+    // Calculate average black levels from statistics if available
+    if (cd.black_stat[4] > 0 && cd.black_stat[5] > 0 && cd.black_stat[6] > 0 && cd.black_stat[7] > 0) {
+        float avgR = float(cd.black_stat[0]) / float(cd.black_stat[4]);
+        float avgG1 = float(cd.black_stat[1]) / float(cd.black_stat[5]);
+        float avgB = float(cd.black_stat[2]) / float(cd.black_stat[6]);
+        float avgG2 = float(cd.black_stat[3]) / float(cd.black_stat[7]);
+        float avgG = (avgG1 + avgG2) * 0.5f;
+        
+        std::cout << "  Calculated averages from stats: R=" << avgR << ", G1=" << avgG1
+                  << ", B=" << avgB << ", G2=" << avgG2 << ", G_avg=" << avgG << std::endl;
+    } else {
+        std::cout << "  No valid black statistics available" << std::endl;
+    }
+    
+    // Print all cblack values
+    std::cout << "\nAll non-zero cblack values:" << std::endl;
+    for (int i = 0; i < 4102; i++) {
+        if (cd.cblack[i] != 0) {
+            std::cout << "  cblack[" << i << "] = " << cd.cblack[i] << std::endl;
+        }
+    }
+    
+    // Print pattern map if it exists
+    if (pw > 0 && ph > 0 && pw * ph <= 4096) { // safety check
+        std::cout << "Pattern map (" << pw << "x" << ph << "):" << std::endl;
+        const unsigned* map = &cd.cblack[6];
+        for (unsigned y = 0; y < ph; y++) {
+            std::cout << "  ";
+            for (unsigned x = 0; x < pw; x++) {
+                std::cout << map[y * pw + x] << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
+
+    // Helper to read the pattern-map value at visible phase (LM,TM)
+    auto map_at = [&](unsigned x, unsigned y) -> int {
+        if (pw == 0u || ph == 0u) return 0;              // no map
+        const unsigned ix = (LM + x) % pw;
+        const unsigned iy = (TM + y) % ph;
+        const unsigned* map = &cd.cblack[6];
+        return int(map[iy * pw + ix]);
+    };
+
+    // Find which cell (within one 2×2) is R, which is B, and the two Greens
+    // We look at the 2×2 block starting at the visible origin phase.
+    int rMap = 0, bMap = 0, g1Map = 0, g2Map = 0;
+    bool g1Set = false;
+
+    for (unsigned dy = 0; dy < 2; ++dy) {
+        for (unsigned dx = 0; dx < 2; ++dx) {
+            int code = raw.COLOR(int(LM + dx), int(TM + dy)); // 0=R, 1/3=G, 2=B
+            int mv   = map_at(dx, dy);
+            if (code == 0)       rMap = mv;
+            else if (code == 2)  bMap = mv;
+            else { // green (1 or 3)
+                if (!g1Set) { g1Map = mv; g1Set = true; }
+                else         { g2Map = mv; }
+            }
+        }
+    }
+
+    // Combine: global + per-channel + pattern-map
+    const float rBlack = float(global + offR  + rMap);
+    const float gBlack = float(global + ((offG1 + g1Map) + (offG2 + g2Map)) * 0.5f);
+    const float bBlack = float(global + offB  + bMap);
+
+    // Debug
+    std::cout << "\nFinal black levels (global + per-channel + map @phase LM=" << LM << ", TM=" << TM << "): "
+              << " R=" << rBlack
+              << " G=" << gBlack
+              << " B=" << bBlack << std::endl;
+    
+    std::cout << "Map contributions: R=" << rMap << ", G1=" << g1Map << ", G2=" << g2Map << ", B=" << bMap << std::endl;
+
+    return { rBlack, gBlack, bBlack };
+}
 
 
 
@@ -149,7 +216,33 @@ static uint32_t deduce_cfa_pattern_at(LibRaw& raw, int x0, int y0)
 	return pat;
 }
 
+// MARK: - Hacks
 
+// Hacks struct for camera model overrides
+struct CameraHacks {
+    struct ModelOverride {
+        std::string originalModel;
+        std::string overrideModel;
+    };
+    
+    static const std::vector<ModelOverride> modelOverrides;
+    
+    static std::string getOverrideModel(const std::string& originalModel) {
+        for (const auto& override : modelOverrides) {
+            if (override.originalModel == originalModel) {
+                return override.overrideModel;
+            }
+        }
+        return ""; // No override found
+    }
+};
+
+// Define the model overrides
+const std::vector<CameraHacks::ModelOverride> CameraHacks::modelOverrides = {
+    {"GFX100S II", "GFX100S"}
+    // Add more overrides here as needed
+    // {"OriginalModel", "OverrideModel"}
+};
 
 
 // MARK: - New Method
@@ -169,6 +262,8 @@ struct RawImageData {
 	float camToAWG3[9];         // 3x3 color matrix (row-major)
 	float rMul;                 // Red multiplier
 	float bMul;                 // Blue multiplier
+    double chromaticity_x;
+    double chromaticity_y;
 };
 
 // C++ function to extract data (no Metal operations)
@@ -185,6 +280,7 @@ static RawImageData* ExtractRawImageDataCPP(const std::filesystem::path& path) {
 		raw->recycle();
 		return nullptr;
 	}
+    
 	
 	// Extract all the data Swift needs
 	RawImageData* data = new RawImageData();
@@ -197,7 +293,7 @@ static RawImageData* ExtractRawImageDataCPP(const std::filesystem::path& path) {
 	const uint32_t fullW = raw->imgdata.sizes.raw_width;
 	
     const int orientation = raw->imgdata.sizes.flip;
-    data->orientation = orientation; 
+    data->orientation = orientation;
     
 	// Calculate pitch
 	data->pitch = (raw->imgdata.sizes.raw_pitch &&
@@ -227,6 +323,71 @@ static RawImageData* ExtractRawImageDataCPP(const std::filesystem::path& path) {
 	data->blackLevelRed = bl.r;
 	data->blackLevelGreen = bl.g;
 	data->blackLevelBlue = bl.b;
+    
+    
+    // ***** Phase One Specific ***** //
+
+    // Check if it's Phase One
+    bool isPhaseOne = (strstr(raw->imgdata.idata.make, "Phase One") != nullptr) ||
+                      (strstr(raw->imgdata.idata.normalized_make, "Phase One") != nullptr);
+
+    if (isPhaseOne) {
+        std::cout << "\n=== Phase One Specific Data ===" << std::endl;
+        
+        // Phase One raw format (raw_bps has special meaning for Phase One)
+        std::cout << "raw_bps (Phase One format): " << c.raw_bps;
+        switch(c.raw_bps) {
+            case 0: std::cout << " (Name unknown)"; break;
+            case 1: std::cout << " (RAW 1)"; break;
+            case 2: std::cout << " (RAW 2)"; break;
+            case 3: std::cout << " (IIQ L / IIQ L14)"; break;
+            case 4: std::cout << " (Never seen)"; break;
+            case 5: std::cout << " (IIQ S)"; break;
+            case 6: std::cout << " (IIQ Sv2 / S14 / S14+)"; break;
+            case 7: std::cout << " (Never seen)"; break;
+            case 8: std::cout << " (IIQ L16 / IIQ L16EX)"; break;
+            default: std::cout << " (Unknown format)"; break;
+        }
+        std::cout << std::endl;
+        
+        
+        std::cout << "P1_color[0]: " << std::endl;
+        std::cout << "  romm_cam matrix (3x3):" << std::endl;
+        for (int i = 0; i < 3; i++) {
+            std::cout << "    [" << i << "]: ";
+            for (int j = 0; j < 3; j++) {
+                std::cout << c.P1_color[0].romm_cam[i*3 + j] << " ";
+            }
+            std::cout << std::endl;
+        }
+
+        std::cout << "P1_color[1]: " << std::endl;
+        std::cout << "  romm_cam matrix (3x3):" << std::endl;
+        for (int i = 0; i < 3; i++) {
+            std::cout << "    [" << i << "]: ";
+            for (int j = 0; j < 3; j++) {
+                std::cout << c.P1_color[1].romm_cam[i*3 + j] << " ";
+            }
+            std::cout << std::endl;
+        }
+        
+    } else {
+        std::cout << "Not a Phase One file" << std::endl;
+    }
+    
+    // ******* End of Phase One ******* //
+    
+    
+    
+    // Print individual linear_max values for all 4 channels
+    std::cout << "as_shot_wb_applied: " << c.as_shot_wb_applied << std::endl;
+    std::cout << "linear_max[0] (R): " << c.linear_max[0] << std::endl;
+    std::cout << "linear_max[1] (G1): " << c.linear_max[1] << std::endl;
+    std::cout << "linear_max[2] (B): " << c.linear_max[2] << std::endl;
+    std::cout << "linear_max[3] (G2): " << c.linear_max[3] << std::endl;
+    std::cout << "c.maximum: " << c.maximum << std::endl;
+    
+    
 	
 	// White level
 	float linearMax = float(std::min({c.linear_max[0], c.linear_max[1], c.linear_max[2]}));
@@ -236,15 +397,17 @@ static RawImageData* ExtractRawImageDataCPP(const std::filesystem::path& path) {
 	// CFA pattern
 	data->cfaPattern = deduce_cfa_pattern_at(*raw, LM, TM);
 	
-	// Color matrix and multipliers
-	auto [camToAWG3, camMul] = getCamToAWG3(raw->imgdata.color);
-	for (int r = 0; r < 3; r++) {
-		for (int c = 0; c < 3; c++) {
-			data->camToAWG3[r * 3 + c] = float(camToAWG3[r][c]);
-		}
-	}
-	data->rMul = camMul[0];
-	data->bMul = camMul[2];
+    // Color matrix and multipliers
+    auto [camToAWG3, camMul, chrom_x, chrom_y] = getCamToAWG3(raw->imgdata.color, raw->imgdata.idata);
+    for (int r = 0; r < 3; r++) {
+        for (int c = 0; c < 3; c++) {
+            data->camToAWG3[r * 3 + c] = float(camToAWG3[r][c]);
+        }
+    }
+    data->rMul = camMul[0];
+    data->bMul = camMul[2];
+    data->chromaticity_x = chrom_x;
+    data->chromaticity_y = chrom_y;
 	
 	raw->recycle();
 	
@@ -321,6 +484,15 @@ extern "C" {
 		CFNumberRef bMul = CFNumberCreate(kCFAllocatorDefault, kCFNumberFloatType, &data->bMul);
 		CFDictionarySetValue(dict, CFSTR("bMul"), bMul);
 		CFRelease(bMul);
+        
+        // Add chromaticity coordinates
+        CFNumberRef chromX = CFNumberCreate(kCFAllocatorDefault, kCFNumberDoubleType, &data->chromaticity_x);
+        CFDictionarySetValue(dict, CFSTR("chromaticity_x"), chromX);
+        CFRelease(chromX);
+
+        CFNumberRef chromY = CFNumberCreate(kCFAllocatorDefault, kCFNumberDoubleType, &data->chromaticity_y);
+        CFDictionarySetValue(dict, CFSTR("chromaticity_y"), chromY);
+        CFRelease(chromY);
 		
 		// Add color matrix as CFArray
 		CFMutableArrayRef matrix = CFArrayCreateMutable(kCFAllocatorDefault, 9, &kCFTypeArrayCallBacks);

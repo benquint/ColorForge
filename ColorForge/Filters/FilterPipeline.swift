@@ -1327,9 +1327,12 @@ class FilterPipeline: ObservableObject {
 							HistogramModel.shared.generateDataDebounced(finalImage)
 							
                         } else {
+                            self.processThumb(finalImage, id, dataModel, RenderingManager.shared.mainImageContext)
+                            
                             dataModel.updateItem(id: id) { item in
                                 item.processImage = finalImage
                             }
+                            
                         }
                     }
                     

@@ -80,6 +80,8 @@ extension CIImage {
 		
 		return (rgb.x, rgb.y, rgb.z)
 	}
+    
+    
 	
 	
 	func findBlackPoint() -> (Float, Float, Float) {

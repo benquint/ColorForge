@@ -45,7 +45,7 @@ struct EnlargerView: View {
 		SubSection(
 			title: "Enlarger",
             icon: "film",
-            checkBoxBinding: $printMode,
+            checkBoxBinding: $apply,
 			isCollapsed: $isCollapsed,
             resetAction: {
                 enlargerExp = 16.0
@@ -110,16 +110,20 @@ struct EnlargerView: View {
                     
                     
 				}
-                .onChange(of: printMode) { newValue in
-                    applyPrintMode = newValue
+                .onAppear {
+                    apply = applyPrintMode
+                    focusedField = nil
                 }
-                .onChange(of: viewModel.currentImgID) {
-                    printMode = applyPrintMode
+                .onChange(of: apply) {
+                    applyPrintMode = apply
                 }
-				.onAppear {
-                    printMode = applyPrintMode
-					focusedField = nil
-				}
+                .onChange(of: applyPrintMode) {
+                    apply = applyPrintMode
+                }
+//                .onChange(of: viewModel.currentImgID) {
+//                    printMode = applyPrintMode
+//                }
+
 				.onChange(of: isCollapsed) { newValue in
 					AppDataManager.shared.setCollapsed(newValue, for: "EnlargerView")
 				}
