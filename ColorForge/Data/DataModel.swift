@@ -182,7 +182,7 @@ class DataModel: ObservableObject {
         
         if cameraModel == "GFX100S II" {
             try? await modifyRAWModel(item, "GFX100S")
-            try? await Task.sleep(nanoseconds: 50_000_000)
+            try? await Task.sleep(nanoseconds: 10_000_000)
         }
         
         guard let data = await getData(at: item.url) else {
@@ -242,7 +242,7 @@ class DataModel: ObservableObject {
         
         if originalModel == "GFX100S II" {
             try? await modifyRAWModel(item, "GFX100S II")
-            try? await Task.sleep(nanoseconds: 50_000_000)
+            try? await Task.sleep(nanoseconds: 10_000_000)
         }
         
         return CIImage(cvPixelBuffer: fullResBuffer)
@@ -259,7 +259,7 @@ class DataModel: ObservableObject {
         
         if cameraModel == "GFX100S II" {
             try? await modifyRAWModel(item, "GFX100S")
-            try? await Task.sleep(nanoseconds: 50_000_000)
+            try? await Task.sleep(nanoseconds: 10_000_000)
         }
         
         guard let data = await getData(at: item.url) else {
@@ -315,7 +315,7 @@ class DataModel: ObservableObject {
         
         if originalModel == "GFX100S II" {
             try? await modifyRAWModel(item, "GFX100S II")
-            try? await Task.sleep(nanoseconds: 50_000_000)
+            try? await Task.sleep(nanoseconds: 10_000_000)
         }
         
         return CIImage(cvPixelBuffer: displayBuffer)
@@ -502,7 +502,7 @@ class DataModel: ObservableObject {
             
             if cameraModel == "GFX100S II" {
                 try? await modifyRAWModel(item, "GFX100S")
-                try? await Task.sleep(nanoseconds: 50_000_000)
+                try? await Task.sleep(nanoseconds: 10_000_000)
             }
             
 
@@ -639,6 +639,7 @@ class DataModel: ObservableObject {
             
             if originalModel == "GFX100S II" {
                 try? await modifyRAWModel(item, "GFX100S II")
+                try? await Task.sleep(nanoseconds: 10_000_000)
             }
         }
     }
@@ -697,7 +698,8 @@ class DataModel: ObservableObject {
             throw NSError(domain: "ExifToolError", code: Int(process.terminationStatus))
         }
         
-        print("✅ Model successfully changed to: \(newModel)")
+        print("Model successfully changed to: \(newModel)")
+        LogModel.shared.log("Model successfully changed to \(newModel) for \(item.url.lastPathComponent)")
     }
     
     

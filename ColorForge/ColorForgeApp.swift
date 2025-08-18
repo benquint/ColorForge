@@ -40,6 +40,7 @@ struct ColorForgeApp: App {
 		_ = AppDataManager.shared
         _ = PaperModel.shared
         _ = SaveModel.shared
+        _ = LogModel.shared
 
 		print("LutModel, RenderingManager, and KernelCache initialized.")
 	}
