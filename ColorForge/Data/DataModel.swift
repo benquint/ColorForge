@@ -444,6 +444,7 @@ class DataModel: ObservableObject {
             return processedBuffer
         } catch {
             print ("Metal processing failed: \(error)")
+            LogModel.shared.log("Metal processing failed: \(error)")
             return nil
         }
     }
@@ -461,9 +462,11 @@ class DataModel: ObservableObject {
                 if let support = supportInfo.first(where: { $0.id == item.id }) {
                     if !support.isSupported {
                         print("Camera isn't supported by LibRaw, skipping: \(item.url.lastPathComponent)")
+                        LogModel.shared.log("Camera isn't supported by GPU Demosaic, skipping: \(item.url.lastPathComponent)")
                     }
                 } else {
                     print("No support info found for: \(item.url.lastPathComponent)")
+                    LogModel.shared.log("No support info found for: \(item.url.lastPathComponent)")
                 }
                 return nil
             }
@@ -506,6 +509,7 @@ class DataModel: ObservableObject {
             
             guard let data = await getData(at: item.url) else {
                 print("Failed to extract data for \(item.url.lastPathComponent)")
+                LogModel.shared.log("Failed to extract data for \(item.url.lastPathComponent)")
                 continue
             }
             
@@ -519,6 +523,7 @@ class DataModel: ObservableObject {
             
             guard let fullBuffer = await demosaicGPU(data, groupIndex) else {
                 print("Failed to Demosaic \(item.url.lastPathComponent)")
+                LogModel.shared.log("Failed to Demosaic \(item.url.lastPathComponent)")
                 continue
             }
             
@@ -591,6 +596,8 @@ class DataModel: ObservableObject {
             
             guard let processedInit = pipeline.applyPipelineV2Sync(item.id, self, ciImage, true) else {
                 print("Pipeline failed for \(item.url.lastPathComponent)")
+                
+                LogModel.shared.log("Pipeline failed for \(item.url.lastPathComponent)")
                 continue
             }
             
@@ -759,6 +766,7 @@ class DataModel: ObservableObject {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
             print("❌ Failed to extract thumbnail for \(url)")
+            LogModel.shared.log("Failed to extract thumbnail for \(url)")
             return 0.0
         }
         
@@ -964,9 +972,11 @@ class DataModel: ObservableObject {
             do {
                 let exifModel = try await getModel(item)
                 model = exifModel
+                LogModel.shared.log("Model found: \(model)")
             }
             catch {
                 print("Exiftool failed to return model")
+                LogModel.shared.log("Failed to find camera model")
             }
             
             
@@ -976,6 +986,7 @@ class DataModel: ObservableObject {
                 print("📷 Found TIFF data for \(url.lastPathComponent): Make=\(cameraMake), Model=\(model)")
             } else {
                 print("❌ No TIFF dictionary found for: \(url.lastPathComponent)")
+                LogModel.shared.log("No TIFF dictionary found for: \(url.lastPathComponent)")
             }
     
             
@@ -985,7 +996,8 @@ class DataModel: ObservableObject {
             if isSupported {
                 print("✅ Camera model: \(cameraMake) make:\(model) is supported by LibRaw")
             } else {
-                print("❌ Camera \(cameraMake) \(model) is NOT supported by LibRaw")
+                print("Camera \(cameraMake) \(model) is NOT supported by GPU Demosaic")
+                LogModel.shared.log("Camera \(cameraMake) \(model) is NOT supported by GPU Demosaic")
             }
             
             // Add support info
@@ -1001,7 +1013,7 @@ class DataModel: ObservableObject {
                 }
             }
             
-            print("✅ Metadata updated for: \(url.lastPathComponent)")
+            print("Metadata updated for: \(url.lastPathComponent)")
         }
         
         return supportInfo
