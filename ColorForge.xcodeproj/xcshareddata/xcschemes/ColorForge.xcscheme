@@ -95,7 +95,7 @@
          <EnvironmentVariable
             key = "CI_PRINT_TREE"
             value = "7 pdf"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </EnvironmentVariable>
       </EnvironmentVariables>
    </LaunchAction>

@@ -84,13 +84,13 @@ static std::pair<double, double> calculateChromaticity(const M3& cam_to_xyz,
 
 
 
-static void printM3(const char* label, const M3& M) {
-	std::cout << label << "\n";
-	for (int r=0;r<3;++r) {
-		for (int c=0;c<3;++c) std::cout << std::setw(12) << std::fixed << std::setprecision(6) << M[r][c] << " ";
-		std::cout << "\n";
-	}
-}
+//static void printM3(const char* label, const M3& M) {
+//	// std::cout << label << "\n";
+//	for (int r=0;r<3;++r) {
+//		for (int c=0;c<3;++c) // std::cout << std::setw(12) << std::fixed << std::setprecision(6) << M[r][c] << " ";
+//		// std::cout << "\n";
+//	}
+//}
 
 //struct CamToAWG3Result {
 //	M3 camToAWG3;
@@ -118,33 +118,33 @@ static M3 wbDiagonal(double rMul, double gMul, double bMul) {
 
 
 static M3 inverse3x3(const M3& M) {
-	M3 R{};
-	double det =
-		M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1]) -
-		M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) +
-		M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
+    M3 R{};
+    double det =
+        M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1]) -
+        M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) +
+        M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
 
-	if (std::fabs(det) < 1e-12) {
-		throw std::runtime_error("Matrix is singular, cannot invert");
-	}
+    if (std::fabs(det) < 1e-12) {
+        // Return identity matrix instead of throwing
+        return identity3();  // Returns [[1,0,0],[0,1,0],[0,0,1]]
+    }
 
-	double invDet = 1.0 / det;
+    double invDet = 1.0 / det;
 
-	R[0][0] =  (M[1][1] * M[2][2] - M[1][2] * M[2][1]) * invDet;
-	R[0][1] = -(M[0][1] * M[2][2] - M[0][2] * M[2][1]) * invDet;
-	R[0][2] =  (M[0][1] * M[1][2] - M[0][2] * M[1][1]) * invDet;
+    R[0][0] =  (M[1][1] * M[2][2] - M[1][2] * M[2][1]) * invDet;
+    R[0][1] = -(M[0][1] * M[2][2] - M[0][2] * M[2][1]) * invDet;
+    R[0][2] =  (M[0][1] * M[1][2] - M[0][2] * M[1][1]) * invDet;
 
-	R[1][0] = -(M[1][0] * M[2][2] - M[1][2] * M[2][0]) * invDet;
-	R[1][1] =  (M[0][0] * M[2][2] - M[0][2] * M[2][0]) * invDet;
-	R[1][2] = -(M[0][0] * M[1][2] - M[0][2] * M[1][0]) * invDet;
+    R[1][0] = -(M[1][0] * M[2][2] - M[1][2] * M[2][0]) * invDet;
+    R[1][1] =  (M[0][0] * M[2][2] - M[0][2] * M[2][0]) * invDet;
+    R[1][2] = -(M[0][0] * M[1][2] - M[0][2] * M[1][0]) * invDet;
 
-	R[2][0] =  (M[1][0] * M[2][1] - M[1][1] * M[2][0]) * invDet;
-	R[2][1] = -(M[0][0] * M[2][1] - M[0][1] * M[2][0]) * invDet;
-	R[2][2] =  (M[0][0] * M[1][1] - M[0][1] * M[1][0]) * invDet;
+    R[2][0] =  (M[1][0] * M[2][1] - M[1][1] * M[2][0]) * invDet;
+    R[2][1] = -(M[0][0] * M[2][1] - M[0][1] * M[2][0]) * invDet;
+    R[2][2] =  (M[0][0] * M[1][1] - M[0][1] * M[1][0]) * invDet;
 
-	return R;
+    return R;
 }
-
 // Build Camera → AWG
 CamToAWG3Result getCamToAWG3(const libraw_colordata_t& color, const libraw_iparams_t& idata) {
     // 1) XYZ→Camera (D50) from LibRaw
@@ -153,106 +153,26 @@ CamToAWG3Result getCamToAWG3(const libraw_colordata_t& color, const libraw_ipara
         for (int c = 0; c < 3; ++c)
             M_XYZ2Cam[r][c] = color.cam_xyz[r][c];
     
-    M3 M_RGB_Cam{};
-    for (int r = 0; r < 3; ++r)
-        for (int c = 0; c < 3; ++c)
-            M_RGB_Cam[r][c] = color.rgb_cam[r][c];
-    
-    const M3 ROMM_to_AWG = {{
-        {1.221544, -0.140816, -0.080727},
-        {-0.108018,  0.923949,  0.184069},
-        {-0.005847,  0.042831,  0.963016}
-    }};
-
-    M3 M_Cam_RGB = inverse3x3(M_RGB_Cam);
-    
     // 2) Invert: Camera→XYZ (D50)
     M3 M_Cam2XYZ = inverse3x3(M_XYZ2Cam);
     
-    // 3) CAT D50→D65 (Bradford)
-    const M3 D50_to_D65 = {{
-        { 0.9555766, -0.0230393,  0.0631636 },
-        {-0.0282895,  1.0099416,  0.0210077 },
-        { 0.0122982, -0.0204830,  1.3299098 }
-    }};
-    
-    // 4) XYZ → AWG matrix (given inverse)
-    const M3 M_XYZ_to_AWG = {{
-        {  1.789066, -0.482534, -0.200076 },
-        { -0.639849,  1.396400,  0.194432 },
-        { -0.041532,  0.082335,  0.878868 }
-    }};
-    
+    // 3) Combined transformation matrix: D50→D65 + XYZ→AWG
     const M3 M_XYZD50_to_AWGD65_Bradford = {{
         {1.659196, -0.524579, -0.134618},
         {-0.625423,  1.421150,  0.204273},
         {-0.030082,  0.066094,  0.963988}
     }};
 
-    // This seems correct
-    M3 M_Cam_to_AWG365 = mul(M_XYZD50_to_AWGD65_Bradford, M_Cam2XYZ);
+    // 4) Final transformation: Camera → AWG
+    M3 M_Cam_to_AWG = mul(M_XYZD50_to_AWGD65_Bradford, M_Cam2XYZ);
 
-    // 5) Compose: Camera→AWG
-    //    Order: (XYZ→AWG) * (CAT D50→D65) * (Camera→XYZ D50)
-    M3 M_camWB_to_AWG = mul3(M_XYZ_to_AWG, D50_to_D65, M_Cam2XYZ);
-
-    // 6) Fold WHITE BALANCE (or apply to raw before matrix)
+    // 5) White balance multipliers
     const double rMul = color.cam_mul[0] / color.cam_mul[1];
     const double gMul = 1.0;
     const double bMul = color.cam_mul[2] / color.cam_mul[1];
 
-    printf("cam_mul: R=%.6f, G1=%.6f, B=%.6f, G2=%.6f\n",
-      color.cam_mul[0],
-      color.cam_mul[1],
-      color.cam_mul[2],
-      color.cam_mul[3]);
-    
-    
-    // Get XY
+    // 6) Calculate XY chromaticity
     auto [chrom_x, chrom_y] = calculateChromaticity(M_Cam2XYZ, rMul, gMul, bMul);
-    printf("Calculated chromaticity: x=%.4f, y=%.4f\n", chrom_x, chrom_y);
     
-
-    // Check if it's Phase One
-    bool isPhaseOne = (strstr(idata.make, "Phase One") != nullptr) ||
-                      (strstr(idata.normalized_make, "Phase One") != nullptr);
-    
-    if (isPhaseOne) {
-        
-        // Create a 3x3 matrix from the multipliers:
-        M3 MulMat = {{
-            {rMul, 0.0,  0.0 },
-            {0.0,  1.0,  0.0 },
-            {0.0,  0.0,  bMul}
-        }};
-        
-        // Get P1_color[0] ROMM→Cam matrix
-        M3 M_ROMM_to_Cam{};
-        for (int r = 0; r < 3; ++r)
-            for (int c = 0; c < 3; ++c)
-                M_ROMM_to_Cam[r][c] = color.P1_color[0].romm_cam[r*3 + c];
-        
-        // Invert to get Cam→ROMM (without white balance)
-        M3 M_Cam_to_ROMM = inverse3x3(M_ROMM_to_Cam);
-        
-        // Compose in correct order: MulMat × ROMM→AWG × Cam→ROMM
-        M3 M_ROMM_to_AWG_WB = mul(MulMat, ROMM_to_AWG);
-        M3 M_Cam_to_AWG_P1 = mul(M_ROMM_to_AWG_WB, M_Cam_to_ROMM);
-        
-        printM3("P1 MulMat", MulMat);
-        printM3("P1 ROMM → Cam", M_ROMM_to_Cam);
-        printM3("P1 Cam → ROMM", M_Cam_to_ROMM);
-        printM3("P1 ROMM → AWG (WB)", M_ROMM_to_AWG_WB);
-        printM3("P1 Camera → AWG", M_Cam_to_AWG_P1);
-        
-        // Return Phase One specific matrix with unity multipliers (WB now baked in)
-        return { M_Cam_to_AWG_P1, { 1.0, 1.0, 1.0 }, chrom_x, chrom_y };
-    } else {
-        
-        printM3("Xyz → Cam", M_XYZ2Cam);
-        printM3("Cam → Xyz", M_Cam2XYZ);
-        printM3("Camera → AWG", M_camWB_to_AWG);
-        
-        return { M_Cam_to_AWG365, { rMul, gMul, bMul }, chrom_x, chrom_y };
-    }
+    return { M_Cam_to_AWG, { rMul, gMul, bMul }, chrom_x, chrom_y };
 }

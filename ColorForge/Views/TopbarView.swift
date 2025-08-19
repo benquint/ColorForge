@@ -451,16 +451,19 @@ struct TopbarView: View {
 //					.keyboardShortcut("r", modifiers: [.command])
 					
 					
-//					// Settings View
-//					Button(action: { isSettingsViewPresented.toggle() }) {
-//						Image(systemName: "gearshape")
-//							.resizable()
-//							.aspectRatio(contentMode: .fit)
-//							.foregroundColor(Color("SideBarText"))
-//							.frame(height: 25)
-//							.padding(5)
-//					}
-//					.buttonStyle(PlainButtonStyle())
+					// Settings View
+                    Button(action: {
+                        /*isSettingsViewPresented.toggle()*/
+                        loadSettings()
+                    }) {
+						Image(systemName: "gearshape")
+							.resizable()
+							.aspectRatio(contentMode: .fit)
+							.foregroundColor(Color("SideBarText"))
+							.frame(height: 25)
+							.padding(5)
+					}
+					.buttonStyle(PlainButtonStyle())
 //					.sheet(isPresented: $isSettingsViewPresented) {
 //						SettingsView()
 //							.environmentObject(imageProcessingModel)
@@ -629,7 +632,43 @@ struct TopbarView: View {
 	 
 	 
 	 */
-	
+    
+    // Should open sandboxed ApplicationSupport/ColorForge
+    private func loadSettings() {
+        do {
+            // Get the app's sandboxed Application Support directory
+            let appSupportURL = try FileManager.default.url(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: false
+            )
+            
+            // Append ColorForge folder name
+            let colorForgeURL = appSupportURL.appendingPathComponent("ColorForge")
+            
+//            // Create the directory if it doesn't exist
+//            try FileManager.default.createDirectory(
+//                at: colorForgeURL,
+//                withIntermediateDirectories: true,
+//                attributes: nil
+//            )
+            
+            // Open the folder in Finder
+            NSWorkspace.shared.open(colorForgeURL)
+            
+        } catch {
+            print("Failed to open ColorForge settings folder: \(error)")
+            
+            // Optional: Show an alert to the user
+            let alert = NSAlert()
+            alert.messageText = "Unable to Open Settings Folder"
+            alert.informativeText = "Could not access the ColorForge settings folder: \(error.localizedDescription)"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
+    }
 	
     private func openImages() {
         dataModel.loading = true

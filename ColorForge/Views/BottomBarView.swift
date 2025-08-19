@@ -226,7 +226,10 @@ struct BottomBarView: View {
 
         if let currentIndex = items.firstIndex(where: { $0.id == currentId }) {
             let nextIndex = (currentIndex + 1) % items.count
+            let nextIndexPlus2 = (currentIndex + 2) % items.count
             let newItem = items[nextIndex]
+            let nextItem = items[nextIndexPlus2]
+            
             imageViewModel.currentImgID = newItem.id
             thumbModel.lastScrolledToID = newItem.id
             imageViewModel.nativeWidth = newItem.nativeWidth
@@ -236,21 +239,26 @@ struct BottomBarView: View {
                 pipeline.applyPipelineV2Sync(items[nextIndex].id, dataModel)
             }
             
-            // Then start HR processing with debounce
-            Task {
-                let targetId = newItem.id
+            if let pixelBuffer = PixelBufferCache.shared.get(newItem.id) {
+                imageViewModel.currentImage = CIImage(cvPixelBuffer: pixelBuffer)
+               // use ciImage
+            } else {
+                print("No buffer available")
+            }
+
+            
+            // Fetch next + 2 display image if not cached, and hr image if not cached.
+            Task (priority: .userInitiated) {
                 
-                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                try? await Task.sleep(nanoseconds: 500_000_000)
                 
-                if let pixelBuffer = PixelBufferCache.shared.get(newItem.id) {
-                    imageViewModel.currentImage = CIImage(cvPixelBuffer: pixelBuffer)
-                    // use ciImage
-                } else {
-                    await dataModel.getDisplay(newItem)
+                if !PixelBufferCache.shared.contains(nextItem.id) {
+                    await dataModel.getDisplay(nextItem)
                 }
                 
-                // Check if user is still on the same image
-                if targetId == imageViewModel.currentImgID {
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second
+            
+                if !PixelBufferHRCache.shared.contains(newItem.id) {
                     await dataModel.getHR(newItem)
                 }
             }
@@ -273,7 +281,9 @@ struct BottomBarView: View {
         // Navigate first
         if let currentIndex = items.firstIndex(where: { $0.id == currentId }) {
             let previousIndex = (currentIndex - 1 + items.count) % items.count
+            let previousIndexPlus2 = (currentIndex - 2 + items.count) % items.count
             let newItem = items[previousIndex]
+            let nextItem = items[previousIndexPlus2]
             
             imageViewModel.currentImgID = newItem.id
             thumbModel.lastScrolledToID = newItem.id
@@ -284,24 +294,29 @@ struct BottomBarView: View {
                 pipeline.applyPipelineV2Sync(newItem.id, dataModel)
             }
             
-            // Then start HR processing with debounce
-            Task {
-                let targetId = newItem.id
-                
-                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-                
-                if let pixelBuffer = PixelBufferCache.shared.get(newItem.id) {
-                    imageViewModel.currentImage = CIImage(cvPixelBuffer: pixelBuffer)
-                    // use ciImage
-                } else {
-                    await dataModel.getDisplay(newItem)
-                }
+            if let pixelBuffer = PixelBufferCache.shared.get(newItem.id) {
+                imageViewModel.currentImage = CIImage(cvPixelBuffer: pixelBuffer)
+               // use ciImage
+            } else {
+                print("No buffer available")
+            }
+
             
+            // Then start HR processing with debounce
+            Task (priority: .userInitiated) {
                 
-                // Check if user is still on the same image
-                if targetId == imageViewModel.currentImgID {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                
+                if !PixelBufferCache.shared.contains(nextItem.id) {
+                    await dataModel.getDisplay(nextItem)
+                }
+                
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 second
+            
+                if !PixelBufferHRCache.shared.contains(newItem.id) {
                     await dataModel.getHR(newItem)
                 }
+
             }
         }
     }

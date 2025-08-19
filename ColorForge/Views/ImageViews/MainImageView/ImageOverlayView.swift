@@ -531,6 +531,8 @@ struct ImageOverlayView: View {
         let normCoord = CGPoint(x: normalizedX, y: flippedY)
         let ciCoord = CGPoint(x: normCoord.x * currentImgSize.width, y: normCoord.y * currentImgSize.height)
         
+        print("CICoord = \(ciCoord)")
+        
         return ciCoord
     }
     

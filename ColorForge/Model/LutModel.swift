@@ -86,7 +86,9 @@ class LutModel {
 			"PipelineV3",
 			"Pipeline",
             "2383v2",
-            "3513v2"
+            "3513v2",
+            "PostPrint",
+            "P400_2025" // For extended range
 			
 		]
 		

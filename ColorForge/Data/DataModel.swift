@@ -15,8 +15,7 @@ class DataModel: ObservableObject {
     static let shared = DataModel(pipeline: FilterPipeline())
     
     @Published var items: [ImageItem] = []
-    
-    
+
     
     @Published var undoManager: UndoManager?
     
@@ -176,7 +175,9 @@ class DataModel: ObservableObject {
     func getHR(_ item: ImageItem) async -> CIImage? {
 
         let tiff = item.tiffDict
-        let cameraModel = tiff?[kCGImagePropertyTIFFModel] as? String ?? "Unknown"
+//        let cameraModel = tiff?[kCGImagePropertyTIFFModel] as? String ?? "Unknown"
+        let cameraModel = try? await getModel(item)
+        try? await Task.sleep(nanoseconds: 10_000_000)
         
         let originalModel = cameraModel
         
@@ -237,7 +238,7 @@ class DataModel: ObservableObject {
         
         
         
-        PixelBufferHRCache.shared.set(fullResBuffer, for: item.id)
+        await PixelBufferHRCache.shared.set(fullResBuffer, for: item.id)
         
         
         if originalModel == "GFX100S II" {
@@ -253,7 +254,9 @@ class DataModel: ObservableObject {
     func getDisplay(_ item: ImageItem) async -> CIImage? {
         
         let tiff = item.tiffDict
-        let cameraModel = tiff?[kCGImagePropertyTIFFModel] as? String ?? "Unknown"
+//        let cameraModel = tiff?[kCGImagePropertyTIFFModel] as? String ?? "Unknown"
+        let cameraModel = try? await getModel(item)
+        try? await Task.sleep(nanoseconds: 10_000_000)
         
         let originalModel = cameraModel
         
@@ -311,7 +314,7 @@ class DataModel: ObservableObject {
         
         
         
-        PixelBufferCache.shared.set(displayBuffer, for: item.id)
+        await PixelBufferCache.shared.set(displayBuffer, for: item.id)
         
         if originalModel == "GFX100S II" {
             try? await modifyRAWModel(item, "GFX100S II")
@@ -473,6 +476,40 @@ class DataModel: ObservableObject {
             return (item, support)
         }
         
+//        // Phase 1: Process unpacking with automatic concurrency management
+//         let unpackedDataArrays = await withTaskGroup(of: UnpackedImageData?.self) { taskGroup in
+//             for (item, support) in supportedItems {
+//                 taskGroup.addTask {
+//                     return await self.processUnpackingItem(item, support: support, restoredItemsDict: restoredItemsDict)
+//                 }
+//             }
+//             
+//             var allUnpackedData: [UnpackedImageData] = []
+//             for await unpackedData in taskGroup {
+//                 if let data = unpackedData {
+//                     allUnpackedData.append(data)
+//                 }
+//             }
+//             return allUnpackedData
+//         }
+//         
+//         // Create a dictionary for quick lookup of unpacked data by item ID
+//         let unpackedDataDict = Dictionary(uniqueKeysWithValues: unpackedDataArrays.map { ($0.itemId, $0) })
+//           
+//           // Second phase: Process the remaining pipeline in 3 groups
+//           let processingGroupSize = max(1, supportedItems.count / 3)
+//           let processingGroups = stride(from: 0, to: supportedItems.count, by: processingGroupSize).map {
+//               Array(supportedItems[$0..<Swift.min($0 + processingGroupSize, supportedItems.count)])
+//           }
+//           
+//           await withTaskGroup(of: Void.self) { taskGroup in
+//               for (groupIndex, group) in processingGroups.enumerated() {
+//                   taskGroup.addTask {
+//                       await self.processImageGroup(group, groupIndex: groupIndex + 1, restoredItemsDict: restoredItemsDict, unpackedDataDict: unpackedDataDict)
+//                   }
+//               }
+//           }
+        
         // Split into 3 groups and process concurrently
         let groupSize = max(1, supportedItems.count / 3)
         let groups = stride(from: 0, to: supportedItems.count, by: groupSize).map {
@@ -487,162 +524,404 @@ class DataModel: ObservableObject {
             }
         }
     }
-
+    
     private func processImageGroup(_ itemSupportPairs: [(ImageItem, CameraSupportInfo)],
-                                  groupIndex: Int,
-                                  restoredItemsDict: [UUID: ImageItem]) async {
-        
-        for (item, support) in itemSupportPairs {
-            
-            
+                                     groupIndex: Int,
+                                     restoredItemsDict: [UUID: ImageItem]) async {
+           
+           for (item, support) in itemSupportPairs {
+               
+               
 
-            let cameraModel = support.model
-            
-            let originalModel = cameraModel
-            
-            if cameraModel == "GFX100S II" {
-                try? await modifyRAWModel(item, "GFX100S")
-                try? await Task.sleep(nanoseconds: 10_000_000)
-            }
-            
+               let cameraModel = support.model
+               
+               let originalModel = cameraModel
+               
+               if cameraModel == "GFX100S II" {
+                   try? await modifyRAWModel(item, "GFX100S")
+                   try? await Task.sleep(nanoseconds: 10_000_000)
+               }
+               
 
-            
-            guard let data = await getData(at: item.url) else {
-                print("Failed to extract data for \(item.url.lastPathComponent)")
-                LogModel.shared.log("Failed to extract data for \(item.url.lastPathComponent)")
-                continue
-            }
-            
-            guard data.cfaPattern == 0 else {
-                print("CFA pattern for \(item.url.lastPathComponent) is not RGGB, skipping GPU Demosaic")
-                continue
-            }
-            
-            let chromX = Float(data.chromaticity_x)
-            let chromY = Float(data.chromaticity_y)
-            
-            guard let fullBuffer = await demosaicGPU(data, groupIndex) else {
-                print("Failed to Demosaic \(item.url.lastPathComponent)")
-                LogModel.shared.log("Failed to Demosaic \(item.url.lastPathComponent)")
-                continue
-            }
-            
-            var fullRes = CIImage(cvPixelBuffer: fullBuffer)
-            
+               
+               guard let data = await getData(at: item.url) else {
+                   print("Failed to extract data for \(item.url.lastPathComponent)")
+                   LogModel.shared.log("Failed to extract data for \(item.url.lastPathComponent)")
+                   continue
+               }
+               
+               guard data.cfaPattern == 0 else {
+                   print("CFA pattern for \(item.url.lastPathComponent) is not RGGB, skipping GPU Demosaic")
+                   continue
+               }
+               
+               let chromX = Float(data.chromaticity_x)
+               let chromY = Float(data.chromaticity_y)
+               
+               guard let fullBuffer = await demosaicGPU(data, groupIndex) else {
+                   print("Failed to Demosaic \(item.url.lastPathComponent)")
+                   LogModel.shared.log("Failed to Demosaic \(item.url.lastPathComponent)")
+                   continue
+               }
+               
+               var fullRes = CIImage(cvPixelBuffer: fullBuffer)
+               
 
-            
-            let orientation = data.orientation
-            switch orientation {
-            case 0:
-                fullRes = fullRes.oriented(.up)
-            case 3:
-                fullRes = fullRes.oriented(.down)
-            case 5:
-                fullRes = fullRes.oriented(.left)
-            case 6:
-                fullRes = fullRes.oriented(.right)
-            default:
-                fullRes = fullRes.oriented(.up)
-            }
-            
-            let width = Int(fullRes.extent.width)
-            let height = Int(fullRes.extent.height)
-            
-            let scale = await calculateScale(width: width, height: height)
-            
-            var scaled = fullRes.transformed(by: CGAffineTransform(scaleX: CGFloat(item.uiScale), y: CGFloat(item.uiScale)))
-            
-            
-            scaled = scaled.LogC2Lin()
-            
-            guard let scaledBuffer = scaled.convertDebayeredToBufferSync() else {
-                print("Scaled buffer creation failed for \(item.url.lastPathComponent)")
-                continue
-            }
-            
-            let smlBuffer = scaledBuffer
-            
-            let ciImage = CIImage(cvPixelBuffer: smlBuffer)
-            
-            // Only update if no temp / tint found aka defaults are found
-            if item.temp == 5500.0 && item.tint == 0.0 {
-                guard let (temp, tint) = ciImage.calculateTempAndTintFromXY(chromX, chromY) else {
-                    print("Temp and Tint extraction failed for \(item.url.lastPathComponent)")
-                    continue
-                }
-                
-                await MainActor.run {
-                    self.updateItem(id: item.id) { item in
-                        item.temp = temp
-                        item.tint = tint
-                        item.initTemp = temp
-                        item.initTint = tint
-                        item.nativeWidth = width
-                        item.nativeHeight = height
-                        item.uiScale = scale
-                    }
-                }
-            }
-            
-            // Cache by UUID only
-            PixelBufferCache.shared.set(smlBuffer, for: item.id)
-            
-            await MainActor.run {
-                self.updateItem(id: item.id) { item in
-                    item.debayeredInit = ciImage
-                    item.baselineExposure = -4.0
-                }
-            }
-            
-            guard let processedInit = pipeline.applyPipelineV2Sync(item.id, self, ciImage, true) else {
-                print("Pipeline failed for \(item.url.lastPathComponent)")
-                
-                LogModel.shared.log("Pipeline failed for \(item.url.lastPathComponent)")
-                continue
-            }
-            
-            let evAdjustment = await calculateBaselineEV(item, processedInit)
-            
-            await MainActor.run {
-                self.updateItem(id: item.id) { item in
-                    item.baselineExposure += evAdjustment
-                }
-                
-                if let processedBal = pipeline.applyPipelineV2Sync(item.id, self, ciImage, true) {
-                    
-                    // Check if we have cached images for this item
-                    if let restoredItem = restoredItemsDict[item.id],
-                       let cachedPreview = restoredItem.previewImage,
-                       let cachedThumbnail = restoredItem.thumbnailImage {
-                        
-                        
-                        self.updateItem(id: item.id) { item in
-                            item.thumbnailImage = cachedThumbnail
-                            item.previewImage = cachedPreview
-                        }
-                        
-                        
-                    } else {
-                        // Generate new preview/thumbnail
-                        let previewCGImage = processedBal.convertPreviewToCGImageSync()
-                        let thumbnailCGImage = processedBal.convertThumbToCGImageSync()
-                        
-                        
-                        self.updateItem(id: item.id) { item in
-                            item.thumbnailImage = thumbnailCGImage
-                            item.previewImage = previewCGImage
-                        }
-                    }
-                }
-            }
+               
+               let orientation = data.orientation
+               switch orientation {
+               case 0:
+                   fullRes = fullRes.oriented(.up)
+               case 3:
+                   fullRes = fullRes.oriented(.down)
+               case 5:
+                   fullRes = fullRes.oriented(.left)
+               case 6:
+                   fullRes = fullRes.oriented(.right)
+               default:
+                   fullRes = fullRes.oriented(.up)
+               }
+               
+               let full = fullRes
+               
+               let width = Int(full.extent.width)
+               let height = Int(full.extent.height)
 
+               let scale = await calculateScale(width: width, height: height)
+               
+               var scaled = fullRes.transformed(by: CGAffineTransform(scaleX: CGFloat(scale), y: CGFloat(scale)))
+               
+               
+               scaled = scaled.LogC2Lin()
+               
+               guard let scaledBuffer = scaled.convertDebayeredToBufferSync() else {
+                   print("Scaled buffer creation failed for \(item.url.lastPathComponent)")
+                   continue
+               }
+               
+               let smlBuffer = scaledBuffer
+               
+               let ciImage = CIImage(cvPixelBuffer: smlBuffer)
+               
+               // Only update if no temp / tint found aka defaults are found
+               if item.temp == 5500.0 && item.tint == 0.0 {
+                   guard let (temp, tint) = ciImage.calculateTempAndTintFromXY(chromX, chromY) else {
+                       print("Temp and Tint extraction failed for \(item.url.lastPathComponent)")
+                       continue
+                   }
+                   
+                   await MainActor.run {
+                       
+                       self.updateItem(id: item.id) { item in
+                           item.temp = temp
+                           item.tint = tint
+                           item.initTemp = temp
+                           item.initTint = tint
+                           item.nativeWidth = width
+                           item.nativeHeight = height
+                           item.uiScale = scale
+                       }
+                   }
+                   
+                   
+               } else {
+                   
             
-            if originalModel == "GFX100S II" {
-                try? await modifyRAWModel(item, "GFX100S II")
-                try? await Task.sleep(nanoseconds: 10_000_000)
-            }
-        }
-    }
+                   
+                   await MainActor.run {
+                       let temp = item.temp
+                       let tint = item.tint
+                       let initTemp = item.initTemp
+                       let initTint = item.initTint
+                       
+                       self.updateItem(id: item.id) { item in
+                           item.temp = temp
+                           item.tint = tint
+                           item.initTemp = initTemp
+                           item.initTint = initTint
+                           item.nativeWidth = width
+                           item.nativeHeight = height
+                           item.uiScale = scale
+                       }
+                   }
+               
+               }
+               // Cache by UUID only
+               await PixelBufferCache.shared.set(smlBuffer, for: item.id)
+               
+               await MainActor.run {
+                   self.updateItem(id: item.id) { item in
+                       item.debayeredInit = ciImage
+                       item.baselineExposure = -4.0
+                   }
+               }
+               
+               guard let processedInit = pipeline.applyPipelineV2Sync(item.id, self, ciImage, true) else {
+                   print("Pipeline failed for \(item.url.lastPathComponent)")
+                   
+                   LogModel.shared.log("Pipeline failed for \(item.url.lastPathComponent)")
+                   continue
+               }
+               
+               let evAdjustment: Float = 0.0
+//               let evAdjustment = await calculateBaselineEV(item, processedInit)
+               
+               await MainActor.run {
+                   self.updateItem(id: item.id) { item in
+                       item.baselineExposure += evAdjustment
+                   }
+                   
+                   if let processedBal = pipeline.applyPipelineV2Sync(item.id, self, ciImage, true) {
+                       
+                       // Check if we have cached images for this item
+                       if let restoredItem = restoredItemsDict[item.id],
+                          let cachedPreview = restoredItem.previewImage,
+                          let cachedThumbnail = restoredItem.thumbnailImage {
+                           
+                           
+                           self.updateItem(id: item.id) { item in
+                               item.thumbnailImage = cachedThumbnail
+                               item.previewImage = cachedPreview
+                           }
+                           
+                           
+                       } else {
+                           // Generate new preview/thumbnail
+                           let previewCGImage = processedBal.convertPreviewToCGImageSync()
+                           let thumbnailCGImage = processedBal.convertThumbToCGImageSync()
+                           
+                           
+                           self.updateItem(id: item.id) { item in
+                               item.thumbnailImage = thumbnailCGImage
+                               item.previewImage = previewCGImage
+                           }
+                       }
+                   }
+               }
+
+               
+               if originalModel == "GFX100S II" {
+                   try? await modifyRAWModel(item, "GFX100S II")
+                   try? await Task.sleep(nanoseconds: 10_000_000)
+               }
+           }
+       }
+    
+//    
+//    private func processUnpackingItem(_ item: ImageItem, support: CameraSupportInfo, restoredItemsDict: [UUID: ImageItem]) async -> UnpackedImageData? {
+//        
+//        let cameraModel = support.model
+//        let originalModel = cameraModel
+//        
+//        if cameraModel == "GFX100S II" {
+//            try? await modifyRAWModel(item, "GFX100S")
+//            try? await Task.sleep(nanoseconds: 10_000_000)
+//        }
+//        
+//        guard let data = await getData(at: item.url) else {
+//            print("Failed to extract data for \(item.url.lastPathComponent)")
+//            LogModel.shared.log("Failed to extract data for \(item.url.lastPathComponent)")
+//            return nil
+//        }
+//        
+//        // Restore original model if needed
+//        if originalModel == "GFX100S II" {
+//            try? await modifyRAWModel(item, "GFX100S II")
+//            try? await Task.sleep(nanoseconds: 10_000_000)
+//        }
+//        
+//        // Create unpacked data structure with item ID
+//        return UnpackedImageData(
+//            itemId: item.id,
+//            originalModel: originalModel,
+//            rawImageData: data
+//        )
+//    }
+//    
+//    private func processUnpackingGroup(_ itemSupportPairs: [(ImageItem, CameraSupportInfo)],
+//                                      groupIndex: Int,
+//                                       restoredItemsDict: [UUID: ImageItem]) async -> [UnpackedImageData] {
+//        
+//        var unpackedDataArray: [UnpackedImageData] = []
+//        
+//        for (item, support) in itemSupportPairs {
+//            
+//            // ********** This section now runs in 8 concurrent groups ********* //
+//            
+//            let cameraModel = support.model
+//            let originalModel = cameraModel
+//            
+//            if cameraModel == "GFX100S II" {
+//                try? await modifyRAWModel(item, "GFX100S")
+//                try? await Task.sleep(nanoseconds: 10_000_000)
+//            }
+//            
+//            guard let data = await getData(at: item.url) else {
+//                print("Failed to extract data for \(item.url.lastPathComponent)")
+//                LogModel.shared.log("Failed to extract data for \(item.url.lastPathComponent)")
+//                continue
+//            }
+//            
+//            // Create unpacked data structure with item ID
+//            let unpackedData = UnpackedImageData(
+//                itemId: item.id,
+//                originalModel: originalModel,
+//                rawImageData: data
+//            )
+//            unpackedDataArray.append(unpackedData)
+//
+//        }
+//        
+//        return unpackedDataArray
+//        
+//    }
+
+//    private func processImageGroup(_ itemSupportPairs: [(ImageItem, CameraSupportInfo)],
+//                                  groupIndex: Int,
+//                                  restoredItemsDict: [UUID: ImageItem],
+//                                  unpackedDataDict: [UUID: UnpackedImageData]) async {
+//        
+//        for (item, support) in itemSupportPairs {
+//            
+//            guard let unpackedData = unpackedDataDict[item.id] else {
+//                print("No unpacked data found for \(item.url.lastPathComponent)")
+//                LogModel.shared.log("No unpacked data found for \(item.url.lastPathComponent)")
+//                continue
+//            }
+//            
+//            let data = unpackedData.rawImageData
+//            let originalModel = unpackedData.originalModel
+//            
+//            guard data.cfaPattern == 0 else {
+//                print("CFA pattern for \(item.url.lastPathComponent) is not RGGB, skipping GPU Demosaic")
+//                continue
+//            }
+//            
+//            let chromX = Float(data.chromaticity_x)
+//            let chromY = Float(data.chromaticity_y)
+//            
+//            guard let fullBuffer = await demosaicGPU(data, groupIndex) else {
+//                print("Failed to Demosaic \(item.url.lastPathComponent)")
+//                LogModel.shared.log("Failed to Demosaic \(item.url.lastPathComponent)")
+//                continue
+//            }
+//            
+//            var fullRes = CIImage(cvPixelBuffer: fullBuffer)
+//            
+//
+//            
+//            let orientation = data.orientation
+//            switch orientation {
+//            case 0:
+//                fullRes = fullRes.oriented(.up)
+//            case 3:
+//                fullRes = fullRes.oriented(.down)
+//            case 5:
+//                fullRes = fullRes.oriented(.left)
+//            case 6:
+//                fullRes = fullRes.oriented(.right)
+//            default:
+//                fullRes = fullRes.oriented(.up)
+//            }
+//            
+//            let width = Int(fullRes.extent.width)
+//            let height = Int(fullRes.extent.height)
+//            
+//            let scale = await calculateScale(width: width, height: height)
+//            
+//            var scaled = fullRes.transformed(by: CGAffineTransform(scaleX: CGFloat(item.uiScale), y: CGFloat(item.uiScale)))
+//            
+//            
+//            scaled = scaled.LogC2Lin()
+//            
+//            guard let scaledBuffer = scaled.convertDebayeredToBufferSync() else {
+//                print("Scaled buffer creation failed for \(item.url.lastPathComponent)")
+//                continue
+//            }
+//            
+//            let smlBuffer = scaledBuffer
+//            
+//            let ciImage = CIImage(cvPixelBuffer: smlBuffer)
+//            
+//            // Only update if no temp / tint found aka defaults are found
+//            if item.temp == 5500.0 && item.tint == 0.0 {
+//                guard let (temp, tint) = ciImage.calculateTempAndTintFromXY(chromX, chromY) else {
+//                    print("Temp and Tint extraction failed for \(item.url.lastPathComponent)")
+//                    continue
+//                }
+//                
+//                await MainActor.run {
+//                    self.updateItem(id: item.id) { item in
+//                        item.temp = temp
+//                        item.tint = tint
+//                        item.initTemp = temp
+//                        item.initTint = tint
+//                        item.nativeWidth = width
+//                        item.nativeHeight = height
+//                        item.uiScale = scale
+//                    }
+//                }
+//            }
+//            
+//            // Cache by UUID only
+//            PixelBufferCache.shared.set(smlBuffer, for: item.id)
+//            
+//            await MainActor.run {
+//                self.updateItem(id: item.id) { item in
+//                    item.debayeredInit = ciImage
+//                    item.baselineExposure = -4.0
+//                }
+//            }
+//            
+//            guard let processedInit = pipeline.applyPipelineV2Sync(item.id, self, ciImage, true) else {
+//                print("Pipeline failed for \(item.url.lastPathComponent)")
+//                
+//                LogModel.shared.log("Pipeline failed for \(item.url.lastPathComponent)")
+//                continue
+//            }
+//            
+//            let evAdjustment = await calculateBaselineEV(item, processedInit)
+//            
+//            await MainActor.run {
+//                self.updateItem(id: item.id) { item in
+//                    item.baselineExposure += evAdjustment
+//                }
+//                
+//                if let processedBal = pipeline.applyPipelineV2Sync(item.id, self, ciImage, true) {
+//                    
+//                    // Check if we have cached images for this item
+//                    if let restoredItem = restoredItemsDict[item.id],
+//                       let cachedPreview = restoredItem.previewImage,
+//                       let cachedThumbnail = restoredItem.thumbnailImage {
+//                        
+//                        
+//                        self.updateItem(id: item.id) { item in
+//                            item.thumbnailImage = cachedThumbnail
+//                            item.previewImage = cachedPreview
+//                        }
+//                        
+//                        
+//                    } else {
+//                        // Generate new preview/thumbnail
+//                        let previewCGImage = processedBal.convertPreviewToCGImageSync()
+//                        let thumbnailCGImage = processedBal.convertThumbToCGImageSync()
+//                        
+//                        
+//                        self.updateItem(id: item.id) { item in
+//                            item.thumbnailImage = thumbnailCGImage
+//                            item.previewImage = previewCGImage
+//                        }
+//                    }
+//                }
+//            }
+//
+//            
+//            if originalModel == "GFX100S II" {
+//                try? await modifyRAWModel(item, "GFX100S II")
+//                try? await Task.sleep(nanoseconds: 10_000_000)
+//            }
+//        }
+//    }
 
 
     // MARK: - Update manifest
@@ -1226,7 +1505,7 @@ class DataModel: ObservableObject {
                         }
                         
                         // Cache by UUID only
-                        PixelBufferCache.shared.set(buffer, for: item.id)
+                        await PixelBufferCache.shared.set(buffer, for: item.id)
                         
                         await MainActor.run {
                             self.updateItem(id: id) { item in

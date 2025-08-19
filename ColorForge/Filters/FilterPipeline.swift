@@ -534,36 +534,8 @@ class FilterPipeline: ObservableObject {
     public var fullResImage: CIImage?
     
     
-    
-    public var scaledImageSize: CGSize = CGSize(width: 1920, height: 1200)
-    
-    func scaleinput(inputImage: CIImage) -> CIImage {
-        let rawExtent = inputImage.extent.size
-        
-        // Fallback to screen size if view size hasn't been set yet
-        let screenSize = NSScreen.main?.frame.size ?? CGSize(width: 1920, height: 1200)
-        
-        let targetWidth = screenSize.width
-        let targetHeight = screenSize.height
-        
-        // Calculate scale factors
-        let scaleX = targetWidth / rawExtent.width
-        let scaleY = targetHeight / rawExtent.height
-        
-        // Uniform scale to fit
-        let scaleFactor = min(scaleX, scaleY)
-        
-        let scaled = inputImage.transformed(by: CGAffineTransform(scaleX: scaleFactor, y: scaleFactor))
-        
-        print("Raw extent: \(rawExtent), target: (\(targetWidth), \(targetHeight)), scaleFactor: \(scaleFactor)")
-        print("Scaled extent: \(scaled.extent)")
-        
-        self.scaledImageSize = scaled.extent.size
-        
-        let outputCached = scaled.insertingIntermediate(cache: true)
-        
-        return outputCached
-    }
+
+
     
     public var exportMode: Bool = false
     public var isLut: Bool = false
@@ -675,6 +647,7 @@ class FilterPipeline: ObservableObject {
     
     
     @Published var logMode: Bool = false
+    @Published var tiffScanMode: Bool = false
     
     //
     
@@ -712,7 +685,11 @@ class FilterPipeline: ObservableObject {
 ////			result = result.slogToLin()
 //			result = result.LogC2Lin()
 //		} else {
-			
+		
+//        if tiffScanMode {
+//            result = item.url.asCIImage()
+//        } else {
+        
 			if inputImage == nil {
 				guard let base = self.unwrapAndReturnImagesSync(item, dataModel) else {
 					print("Failed to unwrap image")
@@ -728,251 +705,256 @@ class FilterPipeline: ObservableObject {
         
         
 	
-        
-        
-        // TempAndTintNode
-        result = applyNodeWithMasks(
-            baseImage: result,
-            item: item,
-            nodeType: "TempAndTintNode",
-            globalNode: TempAndTintNode(
-                targetTemp: item.initTemp,
-                targetTint: item.initTint,
-                sourceTemp: item.temp,
-                sourceTint: item.tint,
-                convertToNeg: item.convertToNeg
-            ),
-            maskBuilder: { mask in
-                TempAndTintNode(
-                    targetTemp: mask.initTemp,
-                    targetTint: mask.initTint,
-                    sourceTemp: mask.temp,
-                    sourceTint: mask.tint,
+        if !tiffScanMode {
+            
+            // TempAndTintNode
+            result = applyNodeWithMasks(
+                baseImage: result,
+                item: item,
+                nodeType: "TempAndTintNode",
+                globalNode: TempAndTintNode(
+                    targetTemp: item.initTemp,
+                    targetTint: item.initTint,
+                    sourceTemp: item.temp,
+                    sourceTint: item.tint,
                     convertToNeg: item.convertToNeg
-                )
+                ),
+                maskBuilder: { mask in
+                    TempAndTintNode(
+                        targetTemp: mask.initTemp,
+                        targetTint: mask.initTint,
+                        sourceTemp: mask.temp,
+                        sourceTint: mask.tint,
+                        convertToNeg: item.convertToNeg
+                    )
+                }
+            )
+            
+            //		result = result.replaceResultWithHald()
+            
+            if logMode {
+                // Convert to AWG
+                //			result = result.sGamutCineToAWG3()
+            } else {
+                //			result = result.P3ToAWG()
             }
-        )
-        
-        //		result = result.replaceResultWithHald()
-        
-        if logMode {
-            // Convert to AWG
-//			result = result.sGamutCineToAWG3()
-		} else {
-//			result = result.P3ToAWG()
-		}
-		
-
-        
-        // RawExposureNode
-        result = applyNodeWithMasks(
-            baseImage: result,
-            item: item,
-            nodeType: "RawExposureNode",
-            globalNode: RawExposureNode(
-                exposure: item.exposure,
-                baselineEV: item.baselineExposure,
-                convertToNeg: item.convertToNeg,
-                applyScanMode: item.applyScanMode,
-                bwMode: item.bwMode,
-                isLut: false,
-				logMode: logMode
-            ),
-            maskBuilder: { settings in
-                RawExposureNode(
-                    exposure: settings.exposure,
+            
+            
+            
+            // RawExposureNode
+            result = applyNodeWithMasks(
+                baseImage: result,
+                item: item,
+                nodeType: "RawExposureNode",
+                globalNode: RawExposureNode(
+                    exposure: item.exposure,
                     baselineEV: item.baselineExposure,
                     convertToNeg: item.convertToNeg,
                     applyScanMode: item.applyScanMode,
                     bwMode: item.bwMode,
                     isLut: false,
-					logMode: logMode
-                )
-            }
-        )
-
-        // Convert to logC
-        result = result.Lin2LogC()
+                    logMode: logMode
+                ),
+                maskBuilder: { settings in
+                    RawExposureNode(
+                        exposure: settings.exposure,
+                        baselineEV: item.baselineExposure,
+                        convertToNeg: item.convertToNeg,
+                        applyScanMode: item.applyScanMode,
+                        bwMode: item.bwMode,
+                        isLut: false,
+                        logMode: logMode
+                    )
+                }
+            )
+            
+            // Convert to logC
+            result = result.Lin2LogC()
+            
+            
+            // Debug
+//            debugSave(result, "LogC_\(item.url.lastPathComponent)")
+            
+            // RawContrastNode
+            result = applyNodeWithMasks(
+                baseImage: result,
+                item: item,
+                nodeType: "RawContrastNode",
+                globalNode: RawContrastNode(contrast: item.contrast),
+                maskBuilder: { mask in
+                    RawContrastNode(contrast: mask.contrast)
+                }
+            )
+            
+            //		var index = 0
+            //		let passes = 3
+            //
+            //		for pass in 0..<passes {
+            //			index += 1
+            //			let noise = result.createNoiseAndCrop()
+            //			let perlin = result.smallPerlin()
+            //			debugSave(perlin, "Small Perlin\(index)")
+            //			debugSave(noise, "NoiseDefault\(index)")
+            //		}
+            
+            
+            // Convert to spherical
+            result = result.RGBtoSpherical()
+            
+            
+            // GlobalSaturationNode
+            result = applyNodeWithMasks(
+                baseImage: result,
+                item: item,
+                nodeType: "GlobalSaturationNode",
+                globalNode: GlobalSaturationNode(saturation: item.saturation),
+                maskBuilder: { mask in
+                    GlobalSaturationNode(saturation: mask.saturation)
+                }
+            )
+            
+            
+            // Convert to RGB
+            result = result.SphericaltoRGB()
+            
+            //        debugSave(result, "not scaled")
+            //        let scaledDebug = result.downAndUp(0.71)
+            //        debugSave(scaledDebug, "scaled")
+            //
+            
+            // HDRNode
+            result = applyNodeWithMasks(
+                baseImage: result,
+                item: item,
+                nodeType: "HDRNode",
+                globalNode: HDRNode(
+                    hdrWhite: item.hdrWhite,
+                    hdrHighlight: item.hdrHighlight,
+                    hdrShadow: item.hdrShadow,
+                    hdrBlack: item.hdrBlack
+                ),
+                maskBuilder: { mask in
+                    HDRNode(
+                        hdrWhite: mask.hdrWhite,
+                        hdrHighlight: mask.hdrHighlight,
+                        hdrShadow: mask.hdrShadow,
+                        hdrBlack: mask.hdrBlack
+                    )
+                }
+            )
+            
+            
+            // Convert to spherical
+            result = result.RGBtoSpherical()
+            
+            
+            
+            // HueSaturationDensityNode
+            result = applyNodeWithMasks(
+                baseImage: result,
+                item: item,
+                nodeType: "HueSaturationDensityNode",
+                globalNode: HueSaturationDensityNode(
+                    redHue: item.redHue, redSat: item.redSat, redDen: item.redDen,
+                    greenHue: item.greenHue, greenSat: item.greenSat, greenDen: item.greenDen,
+                    blueHue: item.blueHue, blueSat: item.blueSat, blueDen: item.blueDen,
+                    cyanHue: item.cyanHue, cyanSat: item.cyanSat, cyanDen: item.cyanDen,
+                    magentaHue: item.magentaHue, magentaSat: item.magentaSat, magentaDen: item.magentaDen,
+                    yellowHue: item.yellowHue, yellowSat: item.yellowSat, yellowDen: item.yellowDen
+                ),
+                maskBuilder: { mask in
+                    HueSaturationDensityNode(
+                        redHue: mask.redHue, redSat: mask.redSat, redDen: mask.redDen,
+                        greenHue: mask.greenHue, greenSat: mask.greenSat, greenDen: mask.greenDen,
+                        blueHue: mask.blueHue, blueSat: mask.blueSat, blueDen: mask.blueDen,
+                        cyanHue: mask.cyanHue, cyanSat: mask.cyanSat, cyanDen: mask.cyanDen,
+                        magentaHue: mask.magentaHue, magentaSat: mask.magentaSat, magentaDen: mask.magentaDen,
+                        yellowHue: mask.yellowHue, yellowSat: mask.yellowSat, yellowDen: mask.yellowDen
+                    )
+                }
+            )
+            
+            // Convert to RGB
+            result = result.SphericaltoRGB()
+            
+            
+            
+            // THOG NODE
+            var thogResult = result
+            //        thogResult = THOGNode(applyTHOG: item.applyTHOG, isExport: item.isExport, blend: item.blend, variance: item.variance, scale: item.scale).apply(to: result)
+            
+            
+            
+            
+            
+            // Convert to neg gamma 2.2
+            result = result.cineonToNeg()
+            result = result.encodeGamma22()
+            
+            // MTFCurveNode
+            let nativeLongEdge = max(item.nativeWidth, item.nativeHeight)
+            result = MTFCurveNode(
+                applyMTF: item.applyMTF,
+                mtfAmount: item.mtfBlend,
+                format: item.selectedGateWidth,
+                applyGrain: item.applyGrain,
+                exportMode: item.isExport,
+                nativeLongEdge: nativeLongEdge,
+                isExport: item.isExport,
+                uiScale: item.uiScale
+            ).apply(to: result)
+            
+            // Convert back
+            result = result.decodeGamma22()
+            result = result.negToCineon()
+            
+            
+            result = NoiseGrainNode(
+                isExport: item.isExport, applyGrain: item.applyGrain
+            ).apply(to: result)
+            
+            //		result = NoiseGrainNodeV2(
+            //			isExport: item.isExport,
+            //            uiScale: item.uiScale,
+            //            id: item.id
+            //		).apply(to: result)
+            
+            
+            
+            //        result = RealisticFilmGrainNode(
+            //            applyGrain: item.applyGrain,
+            //            isExport: item.isExport,
+            //            grain54_low: item.grain54_low,
+            //            grain54_high: item.grain54_high,
+            //            grain60mm_low: item.grain60mm_low,
+            //            grain60mm_high: item.grain60mm_high,
+            //            grain53mm_low: item.grain53mm_low,
+            //            grain53mm_high: item.grain53mm_high,
+            //            grain36mm_low: item.grain36mm_low,
+            //            grain36mm_high: item.grain36mm_high,
+            //            grain25mm_low: item.grain25mm_low,
+            //            grain25mm_high: item.grain25mm_high,
+            //            grain21mm_low: item.grain21mm_low,
+            //            grain21mm_high: item.grain21mm_high,
+            //            grain18mm_low: item.grain18mm_low,
+            //            grain18mm_high: item.grain18mm_high,
+            //            grain10mm_low: item.grain10mm_low,
+            //            grain10mm_high: item.grain10mm_high,
+            //            grain5mm_low: item.grain5mm_low,
+            //            grain5mm_high: item.grain5mm_high,
+            //            grain6mm_low: item.grain6mm_low,
+            //            grain6mm_high: item.grain6mm_high,
+            //            gateWidth: item.selectedGateWidth,
+            //            amount: item.grainAmount
+            //        ).apply(to: result)
+            
+            // FilmStockNode
+            result = FilmStockNode(
+                stockChoice: item.stockChoice,
+                convertToNeg: item.convertToNeg
+            ).apply(to: result)
+            
         
-        
-        // RawContrastNode
-        result = applyNodeWithMasks(
-            baseImage: result,
-            item: item,
-            nodeType: "RawContrastNode",
-            globalNode: RawContrastNode(contrast: item.contrast),
-            maskBuilder: { mask in
-                RawContrastNode(contrast: mask.contrast)
-            }
-        )
-        
-//		var index = 0
-//		let passes = 3
-//		
-//		for pass in 0..<passes {
-//			index += 1
-//			let noise = result.createNoiseAndCrop()
-//			let perlin = result.smallPerlin()
-//			debugSave(perlin, "Small Perlin\(index)")
-//			debugSave(noise, "NoiseDefault\(index)")
-//		}
-
-        
-        // Convert to spherical
-        result = result.RGBtoSpherical()
-        
-        
-        // GlobalSaturationNode
-        result = applyNodeWithMasks(
-            baseImage: result,
-            item: item,
-            nodeType: "GlobalSaturationNode",
-            globalNode: GlobalSaturationNode(saturation: item.saturation),
-            maskBuilder: { mask in
-                GlobalSaturationNode(saturation: mask.saturation)
-            }
-        )
-        
-        
-        // Convert to RGB
-        result = result.SphericaltoRGB()
-        
-        //        debugSave(result, "not scaled")
-        //        let scaledDebug = result.downAndUp(0.71)
-        //        debugSave(scaledDebug, "scaled")
-        //
-        
-        // HDRNode
-        result = applyNodeWithMasks(
-            baseImage: result,
-            item: item,
-            nodeType: "HDRNode",
-            globalNode: HDRNode(
-                hdrWhite: item.hdrWhite,
-                hdrHighlight: item.hdrHighlight,
-                hdrShadow: item.hdrShadow,
-                hdrBlack: item.hdrBlack
-            ),
-            maskBuilder: { mask in
-                HDRNode(
-                    hdrWhite: mask.hdrWhite,
-                    hdrHighlight: mask.hdrHighlight,
-                    hdrShadow: mask.hdrShadow,
-                    hdrBlack: mask.hdrBlack
-                )
-            }
-        )
-        
-        
-        // Convert to spherical
-        result = result.RGBtoSpherical()
-        
-        
-        
-        // HueSaturationDensityNode
-        result = applyNodeWithMasks(
-            baseImage: result,
-            item: item,
-            nodeType: "HueSaturationDensityNode",
-            globalNode: HueSaturationDensityNode(
-                redHue: item.redHue, redSat: item.redSat, redDen: item.redDen,
-                greenHue: item.greenHue, greenSat: item.greenSat, greenDen: item.greenDen,
-                blueHue: item.blueHue, blueSat: item.blueSat, blueDen: item.blueDen,
-                cyanHue: item.cyanHue, cyanSat: item.cyanSat, cyanDen: item.cyanDen,
-                magentaHue: item.magentaHue, magentaSat: item.magentaSat, magentaDen: item.magentaDen,
-                yellowHue: item.yellowHue, yellowSat: item.yellowSat, yellowDen: item.yellowDen
-            ),
-            maskBuilder: { mask in
-                HueSaturationDensityNode(
-                    redHue: mask.redHue, redSat: mask.redSat, redDen: mask.redDen,
-                    greenHue: mask.greenHue, greenSat: mask.greenSat, greenDen: mask.greenDen,
-                    blueHue: mask.blueHue, blueSat: mask.blueSat, blueDen: mask.blueDen,
-                    cyanHue: mask.cyanHue, cyanSat: mask.cyanSat, cyanDen: mask.cyanDen,
-                    magentaHue: mask.magentaHue, magentaSat: mask.magentaSat, magentaDen: mask.magentaDen,
-                    yellowHue: mask.yellowHue, yellowSat: mask.yellowSat, yellowDen: mask.yellowDen
-                )
-            }
-        )
-        
-        // Convert to RGB
-        result = result.SphericaltoRGB()
-        
-        
-        
-        // THOG NODE
-        var thogResult = result
-//        thogResult = THOGNode(applyTHOG: item.applyTHOG, isExport: item.isExport, blend: item.blend, variance: item.variance, scale: item.scale).apply(to: result)
-        
-        
-
-        
-        
-        // Convert to neg gamma 2.2
-        result = result.cineonToNeg()
-        result = result.encodeGamma22()
-        
-        // MTFCurveNode
-        let nativeLongEdge = max(item.nativeWidth, item.nativeHeight)
-        result = MTFCurveNode(
-            applyMTF: item.applyMTF,
-            mtfAmount: item.mtfBlend,
-            format: item.selectedGateWidth,
-            applyGrain: item.applyGrain,
-            exportMode: item.isExport,
-            nativeLongEdge: nativeLongEdge,
-            isExport: item.isExport,
-			uiScale: item.uiScale
-        ).apply(to: result)
-        
-        // Convert back
-        result = result.decodeGamma22()
-        result = result.negToCineon()
-        
-
-		result = NoiseGrainNode(
-			isExport: item.isExport, applyGrain: item.applyGrain
-		).apply(to: result)
-		
-//		result = NoiseGrainNodeV2(
-//			isExport: item.isExport,
-//            uiScale: item.uiScale,
-//            id: item.id
-//		).apply(to: result)
-        
-        
-        
-        //        result = RealisticFilmGrainNode(
-        //            applyGrain: item.applyGrain,
-        //            isExport: item.isExport,
-        //            grain54_low: item.grain54_low,
-        //            grain54_high: item.grain54_high,
-        //            grain60mm_low: item.grain60mm_low,
-        //            grain60mm_high: item.grain60mm_high,
-        //            grain53mm_low: item.grain53mm_low,
-        //            grain53mm_high: item.grain53mm_high,
-        //            grain36mm_low: item.grain36mm_low,
-        //            grain36mm_high: item.grain36mm_high,
-        //            grain25mm_low: item.grain25mm_low,
-        //            grain25mm_high: item.grain25mm_high,
-        //            grain21mm_low: item.grain21mm_low,
-        //            grain21mm_high: item.grain21mm_high,
-        //            grain18mm_low: item.grain18mm_low,
-        //            grain18mm_high: item.grain18mm_high,
-        //            grain10mm_low: item.grain10mm_low,
-        //            grain10mm_high: item.grain10mm_high,
-        //            grain5mm_low: item.grain5mm_low,
-        //            grain5mm_high: item.grain5mm_high,
-        //            grain6mm_low: item.grain6mm_low,
-        //            grain6mm_high: item.grain6mm_high,
-        //            gateWidth: item.selectedGateWidth,
-        //            amount: item.grainAmount
-        //        ).apply(to: result)
-        
-        // FilmStockNode
-        result = FilmStockNode(
-            stockChoice: item.stockChoice,
-            convertToNeg: item.convertToNeg
-        ).apply(to: result)
         
         // DecodeNegativeNode
         result = DecodeNegativeNode(
@@ -981,11 +963,16 @@ class FilterPipeline: ObservableObject {
             stockChoice: item.stockChoice
         ).apply(to: result)
         
+        } // end of tiff scan mode
         
         
-        if item.applyTHOG {
-            result = thogResult
+        if tiffScanMode {
+            result = result.decodeGamma22()
         }
+        
+//        if item.applyTHOG {
+//            result = thogResult
+//        }
         result = PaperNode(
             convertToNeg: item.convertToNeg,
             showPaperMask: item.showPaperMask,
@@ -995,9 +982,9 @@ class FilterPipeline: ObservableObject {
             maskYshift: item.borderYshift
         ).apply(to: result)
         
-        if item.applyTHOG {
-            thogResult = result
-        }
+//        if item.applyTHOG {
+//            thogResult = result
+//        }
         
 
             
@@ -1046,6 +1033,7 @@ class FilterPipeline: ObservableObject {
         
         // EnlargerV2Node
         let enlargerNode = EnlargerV2Node(
+            tiffScanMode: tiffScanMode,
             applyPrintMode: item.applyPrintMode,
             convertToNeg: item.convertToNeg,
             evSeconds: item.enlargerExp,
@@ -1059,6 +1047,9 @@ class FilterPipeline: ObservableObject {
         
         result = enlargerNode.apply(to: result)
         
+        if tiffScanMode {
+            result = result.encodeGamma22()
+        }
         
         // EnlargerV2Node (maskable)
         result = applyEnlargerV2MaskNodeWithMasks(
@@ -1067,7 +1058,7 @@ class FilterPipeline: ObservableObject {
         )
         
         
-        
+        let nativeLongEdge = max(item.nativeWidth, item.nativeHeight)
         // PrintHalationNode (maskable)
         result = applyNodeWithMasks(
             baseImage: result,
@@ -1167,6 +1158,7 @@ class FilterPipeline: ObservableObject {
         
         // PrintGamutNode
         let printGamutNode = PrintGamutNode(
+            tiffScanMode: tiffScanMode,
             convertToNeg: item.convertToNeg,
             applyPrintMode: item.applyPrintMode,
             bwMode: item.bwMode,
@@ -1205,14 +1197,14 @@ class FilterPipeline: ObservableObject {
         )
         
         
-
+        if !tiffScanMode {
             // ApplyAdobeCameraRawCurveNode
             result = ApplyAdobeCameraRawCurveNode(
                 convertToNeg: item.convertToNeg
             ).apply(to: result)
             
             result = AddPaperBlackNode().apply(to: result)
-            
+        }
 
         
         //        result = TomJamiesonFilter(applyTom: item.applyTom).apply(to: result)
@@ -1262,11 +1254,11 @@ class FilterPipeline: ObservableObject {
 		
 		
         
-        if item.applyTHOG {
-            
-            result = thogResult
-            
-        }
+//        if item.applyTHOG {
+//            
+//            result = thogResult
+//            
+//        }
 
         
         let finalFlash = flashPreview

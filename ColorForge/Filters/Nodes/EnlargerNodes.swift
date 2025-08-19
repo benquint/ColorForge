@@ -222,7 +222,7 @@ extension Float {
 
 
 struct EnlargerV2Node: EnlargerNode {
-	
+    let tiffScanMode: Bool
 	let applyPrintMode: Bool
 	let convertToNeg: Bool
 	let evSeconds: Float
@@ -238,36 +238,60 @@ struct EnlargerV2Node: EnlargerNode {
 			return input
 		}
         
-        guard applyPrintMode else {return (input)}
-		
-		guard convertToNeg else {
-            return input
-		}
-		
-        let evNeutral: Float = 0.5550
-        let magentaNeutral: Float = 1.2039 - 0.96996
-        let yellowNeutral: Float = 1.7429 - 0.91066
-        
-		
-        let ev = evSeconds.calcCC(0, fstop) - evNeutral
-        let cyanCC = cyan.calcCC(1, fstop)
-        let magentaCC = magenta.calcCC(2, fstop) + magentaNeutral
-        let yellowCC = yellow.calcCC(3, fstop) + yellowNeutral
-		
-		
+        if tiffScanMode {
+            let evNeutral: Float = 0.5550
+            let magentaNeutral: Float = 1.2039 - 0.96996
+            let yellowNeutral: Float = 1.7429 - 0.91066
+            
+            
+            let ev = evSeconds.calcCC(0, fstop) - evNeutral
+            let cyanCC = cyan.calcCC(1, fstop)
+            let magentaCC = magenta.calcCC(2, fstop) + magentaNeutral
+            let yellowCC = yellow.calcCC(3, fstop) + yellowNeutral
+            
 
-
-		
-		let kernel = CIColorKernelCache.shared.enlargerV2
-		let result = kernel.apply(
-			extent: input.extent,
-			roiCallback: { _, r in r },
-			arguments: [input, ev, cyanCC, magentaCC, yellowCC]
-		) ?? input
-		
-		return 
-			result.cropped(to: input.extent)
-		
+            
+            let kernel = CIColorKernelCache.shared.enlargerV2
+            let result = kernel.apply(
+                extent: input.extent,
+                roiCallback: { _, r in r },
+                arguments: [input, ev, cyanCC, magentaCC, yellowCC]
+            ) ?? input
+            
+            return
+                result.cropped(to: input.extent)
+        } else {
+            
+            
+            guard applyPrintMode else {return (input)}
+            
+            guard convertToNeg else {
+                return input
+            }
+            
+            let evNeutral: Float = 0.5550
+            let magentaNeutral: Float = 1.2039 - 0.96996
+            let yellowNeutral: Float = 1.7429 - 0.91066
+            
+            
+            let ev = evSeconds.calcCC(0, fstop) - evNeutral
+            let cyanCC = cyan.calcCC(1, fstop)
+            let magentaCC = magenta.calcCC(2, fstop) + magentaNeutral
+            let yellowCC = yellow.calcCC(3, fstop) + yellowNeutral
+            
+            
+            
+            
+            
+            let kernel = CIColorKernelCache.shared.enlargerV2
+            let result = kernel.apply(
+                extent: input.extent,
+                roiCallback: { _, r in r },
+                arguments: [input, ev, cyanCC, magentaCC, yellowCC]
+            ) ?? input
+            
+            return result.cropped(to: input.extent)
+        }
 	}
 	
 }
@@ -393,6 +417,7 @@ struct PrintCurveNode: FilterNode {
 
 // MARK: - Print Gamut LUT node
 struct PrintGamutNode: FilterNode {
+    let tiffScanMode: Bool
 	let convertToNeg: Bool
 	let applyPrintMode: Bool
 	let bwMode: Bool
@@ -403,24 +428,46 @@ struct PrintGamutNode: FilterNode {
 	func apply(to input: CIImage) -> CIImage {
 		//		let resourceName = "NegToPrintGamut"
 		// LVT_neg_to_print
-		
-		if !convertToNeg { return input }
-		if !applyPrintMode {return input}
-		if useLegacy { return input }
-		
-		if bwMode { return input } else {
-			let resourceName = "LVT_sRGB_Neg_to_Print"
-			
-			if applyFlash {
-				let multiplied = input.multiply(flash)
-				let result = multiplied.applyLutColorSpace(resourceName)
-				return result.cropped(to: input.extent)
-			} else {
-				let outputImage = input.applyLutColorSpace(resourceName)
-				
-				return outputImage.cropped(to: input.extent)
-			}
-		}
+        if tiffScanMode {
+            if !applyPrintMode {return input}
+            
+            if bwMode { return input } else {
+                let resourceName = "LVT_sRGB_Neg_to_Print"
+                
+                if applyFlash {
+                    let multiplied = input.multiply(flash)
+                    let result = multiplied.applyLutColorSpace(resourceName)
+                    
+//                    let modified = result.applyLutColorSpace("PostPrint")
+                    
+                    return result.cropped(to: input.extent)
+                } else {
+                    let outputImage = input.applyLutColorSpace(resourceName)
+//                    let modified = outputImage.applyLutColorSpace("PostPrint")
+                    
+                    return outputImage.cropped(to: input.extent)
+                }
+            }
+        } else {
+            
+            if !convertToNeg { return input }
+            if !applyPrintMode {return input}
+            if useLegacy { return input }
+            
+            if bwMode { return input } else {
+                let resourceName = "LVT_sRGB_Neg_to_Print"
+                
+                if applyFlash {
+                    let multiplied = input.multiply(flash)
+                    let result = multiplied.applyLutColorSpace(resourceName)
+                    return result.cropped(to: input.extent)
+                } else {
+                    let outputImage = input.applyLutColorSpace(resourceName)
+//                    let modified = outputImage.applyLutColorSpace("PostPrint")
+                    return outputImage.cropped(to: input.extent)
+                }
+            }
+        }
 	}
 }
 

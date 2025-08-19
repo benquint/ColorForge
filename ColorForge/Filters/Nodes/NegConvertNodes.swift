@@ -22,6 +22,7 @@ struct FilmStockNode: FilterNode {
 		
 		let filmStock: String
 		switch stockChoice {
+//        case 0: filmStock = "P400_2025"
 		case 0: filmStock = "Pentax_P400_Oct24"
 		case 1: filmStock = "Pentax645Z_P400_Plus1"
 		case 2: filmStock = "Pentax645Z_P400_Plus2"

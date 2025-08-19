@@ -58,36 +58,7 @@ static BlackRGB compute_black_levels(LibRaw& raw, uint32_t LM, uint32_t TM)
     const unsigned pw = cd.cblack[4];
     const unsigned ph = cd.cblack[5];
 
-    // Print all black level data
-    std::cout << "\n=== Black Level Data ===" << std::endl;
-    std::cout << "Global black: " << global << std::endl;
-    std::cout << "Per-channel cblack[0-3]: R=" << offR << ", G1=" << offG1 << ", B=" << offB << ", G2=" << offG2 << std::endl;
-    std::cout << "Pattern size: pw=" << pw << ", ph=" << ph << std::endl;
-    
-    // Print Phase One specific black levels (corrected access)
-    std::cout << "\n=== Phase One Black Levels ===" << std::endl;
-    if (rd.ph1_cblack != nullptr) {
-        std::cout << "ph1_cblack: [" << rd.ph1_cblack[0][0] << ", "
-                  << rd.ph1_cblack[0][1] << "]" << std::endl;
-    } else {
-        std::cout << "ph1_cblack: nullptr" << std::endl;
-    }
-    
-    if (rd.ph1_rblack != nullptr) {
-        std::cout << "ph1_rblack: [" << rd.ph1_rblack[0][0] << ", "
-                  << rd.ph1_rblack[0][1] << "]" << std::endl;
-    } else {
-        std::cout << "ph1_rblack: nullptr" << std::endl;
-    }
-    
-    // Print black_stat data
-    std::cout << "\n=== Black Statistics ===" << std::endl;
-    std::cout << "Black statistics (black_stat[8]):" << std::endl;
-    std::cout << "  Pixel value sums: R=" << cd.black_stat[0] << ", G1=" << cd.black_stat[1]
-              << ", B=" << cd.black_stat[2] << ", G2=" << cd.black_stat[3] << std::endl;
-    std::cout << "  Pixel counts: R=" << cd.black_stat[4] << ", G1=" << cd.black_stat[5]
-              << ", B=" << cd.black_stat[6] << ", G2=" << cd.black_stat[7] << std::endl;
-    
+
     // Calculate average black levels from statistics if available
     if (cd.black_stat[4] > 0 && cd.black_stat[5] > 0 && cd.black_stat[6] > 0 && cd.black_stat[7] > 0) {
         float avgR = float(cd.black_stat[0]) / float(cd.black_stat[4]);
@@ -96,33 +67,8 @@ static BlackRGB compute_black_levels(LibRaw& raw, uint32_t LM, uint32_t TM)
         float avgG2 = float(cd.black_stat[3]) / float(cd.black_stat[7]);
         float avgG = (avgG1 + avgG2) * 0.5f;
         
-        std::cout << "  Calculated averages from stats: R=" << avgR << ", G1=" << avgG1
-                  << ", B=" << avgB << ", G2=" << avgG2 << ", G_avg=" << avgG << std::endl;
-    } else {
-        std::cout << "  No valid black statistics available" << std::endl;
     }
     
-    // Print all cblack values
-    std::cout << "\nAll non-zero cblack values:" << std::endl;
-    for (int i = 0; i < 4102; i++) {
-        if (cd.cblack[i] != 0) {
-            std::cout << "  cblack[" << i << "] = " << cd.cblack[i] << std::endl;
-        }
-    }
-    
-    // Print pattern map if it exists
-    if (pw > 0 && ph > 0 && pw * ph <= 4096) { // safety check
-        std::cout << "Pattern map (" << pw << "x" << ph << "):" << std::endl;
-        const unsigned* map = &cd.cblack[6];
-        for (unsigned y = 0; y < ph; y++) {
-            std::cout << "  ";
-            for (unsigned x = 0; x < pw; x++) {
-                std::cout << map[y * pw + x] << " ";
-            }
-            std::cout << std::endl;
-        }
-    }
-
     // Helper to read the pattern-map value at visible phase (LM,TM)
     auto map_at = [&](unsigned x, unsigned y) -> int {
         if (pw == 0u || ph == 0u) return 0;              // no map
@@ -155,13 +101,6 @@ static BlackRGB compute_black_levels(LibRaw& raw, uint32_t LM, uint32_t TM)
     const float gBlack = float(global + ((offG1 + g1Map) + (offG2 + g2Map)) * 0.5f);
     const float bBlack = float(global + offB  + bMap);
 
-    // Debug
-    std::cout << "\nFinal black levels (global + per-channel + map @phase LM=" << LM << ", TM=" << TM << "): "
-              << " R=" << rBlack
-              << " G=" << gBlack
-              << " B=" << bBlack << std::endl;
-    
-    std::cout << "Map contributions: R=" << rMap << ", G1=" << g1Map << ", G2=" << g2Map << ", B=" << bMap << std::endl;
 
     return { rBlack, gBlack, bBlack };
 }
@@ -208,10 +147,10 @@ static uint32_t deduce_cfa_pattern_at(LibRaw& raw, int x0, int y0)
 	else if (isG(c00) && isR(c10) && isB(c01) && isG(c11)) { pat = 2; patName = "GRBG"; }
 	else if (isG(c00) && isB(c10) && isR(c01) && isG(c11)) { pat = 3; patName = "GBRG"; }
 	
-	std::cerr << "CFA pattern at origin (" << x0 << "," << y0 << "): " << patName
-	<< "  [" << pat << "]\n";
-	std::cerr << label(c00) << " " << label(c10) << "\n"
-	<< label(c01) << " " << label(c11) << "\n";
+//	std::cerr << "CFA pattern at origin (" << x0 << "," << y0 << "): " << patName
+//	<< "  [" << pat << "]\n";
+//	std::cerr << label(c00) << " " << label(c10) << "\n"
+//	<< label(c01) << " " << label(c11) << "\n";
 	
 	return pat;
 }
@@ -325,67 +264,7 @@ static RawImageData* ExtractRawImageDataCPP(const std::filesystem::path& path) {
 	data->blackLevelBlue = bl.b;
     
     
-    // ***** Phase One Specific ***** //
 
-    // Check if it's Phase One
-    bool isPhaseOne = (strstr(raw->imgdata.idata.make, "Phase One") != nullptr) ||
-                      (strstr(raw->imgdata.idata.normalized_make, "Phase One") != nullptr);
-
-    if (isPhaseOne) {
-        std::cout << "\n=== Phase One Specific Data ===" << std::endl;
-        
-        // Phase One raw format (raw_bps has special meaning for Phase One)
-        std::cout << "raw_bps (Phase One format): " << c.raw_bps;
-        switch(c.raw_bps) {
-            case 0: std::cout << " (Name unknown)"; break;
-            case 1: std::cout << " (RAW 1)"; break;
-            case 2: std::cout << " (RAW 2)"; break;
-            case 3: std::cout << " (IIQ L / IIQ L14)"; break;
-            case 4: std::cout << " (Never seen)"; break;
-            case 5: std::cout << " (IIQ S)"; break;
-            case 6: std::cout << " (IIQ Sv2 / S14 / S14+)"; break;
-            case 7: std::cout << " (Never seen)"; break;
-            case 8: std::cout << " (IIQ L16 / IIQ L16EX)"; break;
-            default: std::cout << " (Unknown format)"; break;
-        }
-        std::cout << std::endl;
-        
-        
-        std::cout << "P1_color[0]: " << std::endl;
-        std::cout << "  romm_cam matrix (3x3):" << std::endl;
-        for (int i = 0; i < 3; i++) {
-            std::cout << "    [" << i << "]: ";
-            for (int j = 0; j < 3; j++) {
-                std::cout << c.P1_color[0].romm_cam[i*3 + j] << " ";
-            }
-            std::cout << std::endl;
-        }
-
-        std::cout << "P1_color[1]: " << std::endl;
-        std::cout << "  romm_cam matrix (3x3):" << std::endl;
-        for (int i = 0; i < 3; i++) {
-            std::cout << "    [" << i << "]: ";
-            for (int j = 0; j < 3; j++) {
-                std::cout << c.P1_color[1].romm_cam[i*3 + j] << " ";
-            }
-            std::cout << std::endl;
-        }
-        
-    } else {
-        std::cout << "Not a Phase One file" << std::endl;
-    }
-    
-    // ******* End of Phase One ******* //
-    
-    
-    
-    // Print individual linear_max values for all 4 channels
-    std::cout << "as_shot_wb_applied: " << c.as_shot_wb_applied << std::endl;
-    std::cout << "linear_max[0] (R): " << c.linear_max[0] << std::endl;
-    std::cout << "linear_max[1] (G1): " << c.linear_max[1] << std::endl;
-    std::cout << "linear_max[2] (B): " << c.linear_max[2] << std::endl;
-    std::cout << "linear_max[3] (G2): " << c.linear_max[3] << std::endl;
-    std::cout << "c.maximum: " << c.maximum << std::endl;
     
     
 	
@@ -411,7 +290,7 @@ static RawImageData* ExtractRawImageDataCPP(const std::filesystem::path& path) {
 	
 	raw->recycle();
 	
-	std::cerr << "Successfully extracted raw data: " << data->width << "x" << data->height << std::endl;
+
 	return data;
 }
 

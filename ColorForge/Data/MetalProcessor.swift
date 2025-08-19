@@ -12,6 +12,13 @@ import CoreVideo
 import CoreImage
 
 
+
+struct UnpackedImageData {
+    let itemId: UUID
+    let originalModel: String
+    let rawImageData: RawImageData
+}
+
 // Swift structure to match your C++ RawImageData
 struct RawImageData {
 	let rawPixels: Data

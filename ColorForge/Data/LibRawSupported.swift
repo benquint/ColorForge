@@ -17,46 +17,44 @@ extension LibRawSupported {
     ///   - model: Full camera model (e.g., "Pentax 645D")
     /// - Returns: True if the camera model is supported
     func isCameraSupported(make: String, model: String) -> Bool {
-//        print("🔍 DEBUG: Input make: '\(make)', model: '\(model)'")
         
         // Clean the model by removing the make prefix
         let cleanedModel = cleanModelName(make: make, model: model)
-//        print("🔍 DEBUG: Cleaned model: '\(cleanedModel)'")
         
         // Get all supported models from the struct
         let supportedModels = getAllSupportedModels()
-//        print("🔍 DEBUG: Total supported models: \(supportedModels.count)")
-//        print("🔍 DEBUG: First 10 supported models: \(Array(supportedModels.prefix(10)))")
         
-        // Look specifically for 645D
-        let pentax645Models = supportedModels.filter { $0.contains("645") }
-//        print("🔍 DEBUG: Pentax 645 models found: \(pentax645Models)")
-        
-        // Check if any supported model matches (case-insensitive)
+        // Check if any supported model matches (case-insensitive, space-insensitive)
         let isSupported = supportedModels.contains { supportedModel in
-            let normalizedSupported = supportedModel.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-            let normalizedCleaned = cleanedModel.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+            let normalizedSupported = normalizeModelForComparison(supportedModel)
+            let normalizedCleaned = normalizeModelForComparison(cleanedModel)
+            
             
             if normalizedSupported == normalizedCleaned {
-//                print("🔍 DEBUG: MATCH FOUND! '\(normalizedSupported)' == '\(normalizedCleaned)'")
+                print("✅ DEBUG: Found exact match: '\(supportedModel)'")
                 return true
             }
             return false
         }
         
         if !isSupported {
-//            print("🔍 DEBUG: No exact match found")
             // Try to find close matches for debugging
             let closeMatches = supportedModels.filter { supportedModel in
-                supportedModel.lowercased().contains(cleanedModel.lowercased()) ||
-                cleanedModel.lowercased().contains(supportedModel.lowercased())
-            }
-            if !closeMatches.isEmpty {
-//                print("🔍 DEBUG: Close matches found: \(closeMatches)")
+                let normalizedSupported = normalizeModelForComparison(supportedModel)
+                let normalizedCleaned = normalizeModelForComparison(cleanedModel)
+                return normalizedSupported.contains(normalizedCleaned) ||
+                       normalizedCleaned.contains(normalizedSupported)
             }
         }
         
         return isSupported
+    }
+    
+    /// Normalizes model names for comparison by removing spaces and converting to lowercase
+    private func normalizeModelForComparison(_ model: String) -> String {
+        return model.lowercased()
+                   .replacingOccurrences(of: " ", with: "")
+                   .trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     /// Removes the make from the model string and cleans it up
@@ -64,39 +62,31 @@ extension LibRawSupported {
         // First, trim both inputs
         let trimmedMake = make.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-//        print("🔍 DEBUG: trimmedMake: '\(trimmedMake)', trimmedModel: '\(trimmedModel)'")
-        
+
         var cleanedModel = trimmedModel
         
         // Special case: If make is "RICOH IMAGING COMPANY, LTD.", treat it as Pentax/Ricoh
         if trimmedMake.uppercased().contains("RICOH IMAGING COMPANY") {
-            print("🔍 DEBUG: Detected Ricoh Imaging Company - treating as Pentax/Ricoh")
             // For Ricoh, we want to remove "PENTAX" from the model if present
             let modelLower = trimmedModel.lowercased()
             if modelLower.hasPrefix("pentax") {
                 cleanedModel = String(trimmedModel.dropFirst(6)) // Remove "PENTAX"
-                print("🔍 DEBUG: After removing PENTAX prefix: '\(cleanedModel)'")
             }
         } else {
             // Normal processing - try to remove the make from the model
             let makePrefix = trimmedMake.lowercased()
             let modelLower = trimmedModel.lowercased()
             
-//            print("🔍 DEBUG: makePrefix: '\(makePrefix)', modelLower: '\(modelLower)'")
-            
             if modelLower.hasPrefix(makePrefix) {
                 // Remove the make and any following whitespace/punctuation
                 cleanedModel = String(trimmedModel.dropFirst(trimmedMake.count))
-                print("🔍 DEBUG: After dropping make: '\(cleanedModel)'")
             } else {
                 // Try common brand prefixes if the make doesn't match
-                let brandPrefixes = ["pentax", "canon", "nikon", "sony", "fujifilm", "olympus", "panasonic", "leica"]
+                let brandPrefixes = ["pentax", "canon", "nikon", "sony", "fujifilm", "olympus", "panasonic", "leica", "fuji"]
                 
                 for brandPrefix in brandPrefixes {
                     if modelLower.hasPrefix(brandPrefix) {
                         cleanedModel = String(trimmedModel.dropFirst(brandPrefix.count))
-                        print("🔍 DEBUG: After dropping '\(brandPrefix)': '\(cleanedModel)'")
                         break
                     }
                 }
@@ -105,12 +95,10 @@ extension LibRawSupported {
         
         // Clean up the result
         cleanedModel = cleanedModel.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
-        print("🔍 DEBUG: After trimming whitespace: '\(cleanedModel)'")
         
         // Remove leading non-alphanumeric characters (like spaces, dashes, etc.)
         cleanedModel = cleanedModel.replacingOccurrences(of: "^[^a-zA-Z0-9]+", with: "", options: .regularExpression)
-        print("🔍 DEBUG: After removing non-alphanumeric: '\(cleanedModel)'")
-        
+
         let finalResult = cleanedModel.trimmingCharacters(in: .whitespacesAndNewlines)
         print("🔍 DEBUG: Final cleaned result: '\(finalResult)'")
         return finalResult
@@ -125,7 +113,8 @@ extension LibRawSupported {
         
         // Debug: Check if we're getting the right values
         let sample645Models = models.filter { $0.contains("645") }
-        print("🔍 DEBUG: Sample 645 models from reflection: \(sample645Models)")
+        let sampleGFXModels = models.filter { $0.contains("GFX") }
+
         
         return models
     }
@@ -452,7 +441,7 @@ struct LibRawSupported {
     // HS30EXR / HS33EXR / HS35EXR
     let HS50EXR: String = "HS50EXR"
     let GFX_50S: String = "GFX50S"
-    let GFX_50S_II: String = "GFX50S II"
+    let GFX_50S_II: String = "GFX50SII"
     let GFX_50R: String = "GFX 50R"
     let GFX_100: String = "GFX100"
     let GFX_100S: String = "GFX100S"

@@ -199,8 +199,9 @@ struct ContentView: View {
                                     if folderAnimationComplete {
                                         
                                         ProgressView()
-                                            .background(Color(red: 0.22, green: 0.22, blue: 0.22))
+                                            .background(Color("MenuAccentDark"))
                                             .position(x: geo.size.width / 2.0, y: geo.size.height * 0.4)
+                                            
                                         
                                     }
                                 }

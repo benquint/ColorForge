@@ -478,7 +478,7 @@ struct ThumbnailView: View {
 
 						// cache key: id + role
 						let key = "\(id.uuidString)#preview"
-						PixelBufferCache.shared.set(buffer, for: item.id)
+						await PixelBufferCache.shared.set(buffer, for: item.id)
 
 
 

@@ -151,12 +151,22 @@ class ImageViewModel: ObservableObject {
 		let zoomHeight = viewSize.height
 		
 		let scalar = max(CGFloat(nativeWidth), CGFloat(nativeHeight)) / max(img.extent.width, img.extent.height)
+        
+
 		
 		zoomScale = scalar
 		
 		let scaledZoomPoint = point * scalar
 		let zoomOriginX = scaledZoomPoint.x - (zoomWidth / 2)
 		let zoomOriginY = scaledZoomPoint.y - (zoomHeight / 2)
+        
+        print("""
+            
+            Native Height: \(nativeHeight)
+            Native Width: \(nativeWidth)
+            ZoomScale: \(zoomScale)
+            
+            """)
 		
 		let zoomRect = CGRect(
 			x: zoomOriginX,
