@@ -253,7 +253,6 @@ class DataModel: ObservableObject {
     @discardableResult
     func getDisplay(_ item: ImageItem) async -> CIImage? {
         
-        let tiff = item.tiffDict
 //        let cameraModel = tiff?[kCGImagePropertyTIFFModel] as? String ?? "Unknown"
         let cameraModel = try? await getModel(item)
         try? await Task.sleep(nanoseconds: 10_000_000)
@@ -476,39 +475,7 @@ class DataModel: ObservableObject {
             return (item, support)
         }
         
-//        // Phase 1: Process unpacking with automatic concurrency management
-//         let unpackedDataArrays = await withTaskGroup(of: UnpackedImageData?.self) { taskGroup in
-//             for (item, support) in supportedItems {
-//                 taskGroup.addTask {
-//                     return await self.processUnpackingItem(item, support: support, restoredItemsDict: restoredItemsDict)
-//                 }
-//             }
-//             
-//             var allUnpackedData: [UnpackedImageData] = []
-//             for await unpackedData in taskGroup {
-//                 if let data = unpackedData {
-//                     allUnpackedData.append(data)
-//                 }
-//             }
-//             return allUnpackedData
-//         }
-//         
-//         // Create a dictionary for quick lookup of unpacked data by item ID
-//         let unpackedDataDict = Dictionary(uniqueKeysWithValues: unpackedDataArrays.map { ($0.itemId, $0) })
-//           
-//           // Second phase: Process the remaining pipeline in 3 groups
-//           let processingGroupSize = max(1, supportedItems.count / 3)
-//           let processingGroups = stride(from: 0, to: supportedItems.count, by: processingGroupSize).map {
-//               Array(supportedItems[$0..<Swift.min($0 + processingGroupSize, supportedItems.count)])
-//           }
-//           
-//           await withTaskGroup(of: Void.self) { taskGroup in
-//               for (groupIndex, group) in processingGroups.enumerated() {
-//                   taskGroup.addTask {
-//                       await self.processImageGroup(group, groupIndex: groupIndex + 1, restoredItemsDict: restoredItemsDict, unpackedDataDict: unpackedDataDict)
-//                   }
-//               }
-//           }
+
         
         // Split into 3 groups and process concurrently
         let groupSize = max(1, supportedItems.count / 3)
@@ -938,22 +905,58 @@ class DataModel: ObservableObject {
     
    // MARK: - Modify Model
     
-//    func modifyRAWModel(_ fileURL: URL, _ newModel: String) async throws {
     func modifyRAWModel(_ item: ImageItem, _ newModel: String) async throws {
         let fileURL = item.url
-
+        LogModel.shared.log("🔧 Starting modifyRAWModel for: \(fileURL.lastPathComponent)")
         
-        guard let scriptPath = Bundle.main.path(forResource: "exiftool", ofType: nil),
-              let resourcePath = Bundle.main.resourcePath else {
-            throw NSError(domain: "ExifToolNotFound", code: -1)
+        // Get group container URL
+        guard let groupContainer = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: "BenQuinton.ColorForge.group"
+        ) else {
+            LogModel.shared.log("❌ Failed to get group container")
+            throw NSError(domain: "GroupContainerNotFound", code: -1)
         }
         
-        let libPath = "\(resourcePath)/lib"
+        let tempDir = groupContainer.appendingPathComponent("exiftool_temp")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true, attributes: nil)
+        
+        // Create a specific temp directory for this operation
+        let operationTempDir = tempDir.appendingPathComponent("operation_\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: operationTempDir, withIntermediateDirectories: true, attributes: nil)
+        
+        // Copy the RAW file to our temp directory first
+        let tempRAWFile = operationTempDir.appendingPathComponent(fileURL.lastPathComponent)
+        try FileManager.default.copyItem(at: fileURL, to: tempRAWFile)
+        
+        LogModel.shared.log("🔧 Copied RAW file to: \(tempRAWFile.path)")
+        
+        let groupExifTool = tempDir.appendingPathComponent("exiftool")
+        let groupLib = tempDir.appendingPathComponent("lib")
+        
+        // Copy exiftool if needed
+        if !FileManager.default.fileExists(atPath: groupExifTool.path) {
+            guard let bundleExifTool = Bundle.main.path(forResource: "exiftool", ofType: nil),
+                  let bundleResourcePath = Bundle.main.resourcePath else {
+                throw NSError(domain: "ExifToolNotFound", code: -1)
+            }
+            
+            try FileManager.default.copyItem(atPath: bundleExifTool, toPath: groupExifTool.path)
+            try FileManager.default.copyItem(atPath: "\(bundleResourcePath)/lib", toPath: groupLib.path)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: groupExifTool.path)
+        }
         
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/perl")
-        process.arguments = ["-I\(libPath)", scriptPath, "-overwrite_original", "-Model=\(newModel)", fileURL.path]
+        process.arguments = [
+            "-I\(groupLib.path)",
+            groupExifTool.path,
+            "-overwrite_original",
+            "-Model=\(newModel)",
+            tempRAWFile.path  // Work on the temp copy
+        ]
+        process.currentDirectoryURL = operationTempDir
         
+        LogModel.shared.log("🔧 Command: \(process.arguments?.joined(separator: " ") ?? "")")
         
         let outputPipe = Pipe()
         let errorPipe = Pipe()
@@ -969,32 +972,159 @@ class DataModel: ObservableObject {
         let output = String(data: outputData, encoding: .utf8) ?? ""
         let error = String(data: errorData, encoding: .utf8) ?? ""
         
-        print("🔧 Process exit code: \(process.terminationStatus)")
-        if !output.isEmpty { print("🔧 Output: \(output)") }
-        if !error.isEmpty { print("🔧 Error: \(error)") }
+        LogModel.shared.log("🔧 Exit code: \(process.terminationStatus)")
+        if !output.isEmpty { LogModel.shared.log("🔧 Output: \(output)") }
+        if !error.isEmpty { LogModel.shared.log("🔧 Error: \(error)") }
+        
+        if process.terminationStatus == 0 {
+            // Copy the modified file back to original location
+            LogModel.shared.log("🔧 Copying modified file back to original location")
+            try FileManager.default.removeItem(at: fileURL)
+            try FileManager.default.copyItem(at: tempRAWFile, to: fileURL)
+            LogModel.shared.log("✅ Successfully updated original file")
+        }
+        
+        // Clean up operation temp directory
+        try? FileManager.default.removeItem(at: operationTempDir)
         
         if process.terminationStatus != 0 {
             throw NSError(domain: "ExifToolError", code: Int(process.terminationStatus))
         }
         
-        print("Model successfully changed to: \(newModel)")
-        LogModel.shared.log("Model successfully changed to \(newModel) for \(item.url.lastPathComponent)")
+        LogModel.shared.log("✅ Model successfully changed to \(newModel) for \(fileURL.lastPathComponent)")
     }
+    
+//    func modifyRAWModel(_ fileURL: URL, _ newModel: String) async throws {
+//    func modifyRAWModel(_ item: ImageItem, _ newModel: String) async throws {
+//        let fileURL = item.url
+//        
+//        // Get group container URL
+//        guard let groupContainer = FileManager.default.containerURL(
+//            forSecurityApplicationGroupIdentifier: "BenQuinton.ColorForge.group"
+//        ) else {
+//            throw NSError(domain: "GroupContainerNotFound", code: -1)
+//        }
+//        
+//        // Create a temporary directory in group container
+//        let tempDir = groupContainer.appendingPathComponent("exiftool_temp")
+//        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true, attributes: nil)
+//        
+//        // Copy exiftool and lib to group container if not already there
+//        let groupExifTool = tempDir.appendingPathComponent("exiftool")
+//        let groupLib = tempDir.appendingPathComponent("lib")
+//        
+//        if !FileManager.default.fileExists(atPath: groupExifTool.path) {
+//            guard let bundleExifTool = Bundle.main.path(forResource: "exiftool", ofType: nil),
+//                  let bundleResourcePath = Bundle.main.resourcePath else {
+//                throw NSError(domain: "ExifToolNotFound", code: -1)
+//            }
+//            
+//            // Copy exiftool script
+//            try FileManager.default.copyItem(atPath: bundleExifTool, toPath: groupExifTool.path)
+//            
+//            // Copy lib directory
+//            let bundleLib = "\(bundleResourcePath)/lib"
+//            try FileManager.default.copyItem(atPath: bundleLib, toPath: groupLib.path)
+//            
+//            // Make exiftool executable
+//            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: groupExifTool.path)
+//        }
+//        
+//        let process = Process()
+//        process.executableURL = URL(fileURLWithPath: "/usr/bin/perl")
+//        process.arguments = ["-I\(groupLib.path)", groupExifTool.path, "-overwrite_original", "-Model=\(newModel)", fileURL.path]
+//        process.currentDirectoryURL = tempDir  // Set working directory to group container
+//        
+//        let outputPipe = Pipe()
+//        let errorPipe = Pipe()
+//        process.standardOutput = outputPipe
+//        process.standardError = errorPipe
+//        
+//        try process.run()
+//        process.waitUntilExit()
+//        
+//        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+//        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+//        
+//        let output = String(data: outputData, encoding: .utf8) ?? ""
+//        let error = String(data: errorData, encoding: .utf8) ?? ""
+//        
+//        print("🔧 Process exit code: \(process.terminationStatus)")
+//        if !output.isEmpty { print("🔧 Output: \(output)") }
+//        if !error.isEmpty { print("🔧 Error: \(error)") }
+//        
+//        if process.terminationStatus != 0 {
+//            throw NSError(domain: "ExifToolError", code: Int(process.terminationStatus))
+//        }
+//        
+//        print("Model successfully changed to: \(newModel)")
+//        LogModel.shared.log("Model successfully changed to \(newModel) for \(item.url.lastPathComponent)")
+//    }
     
     
     func getModel(_ item: ImageItem) async throws -> String {
         let fileURL = item.url
-
-        guard let scriptPath = Bundle.main.path(forResource: "exiftool", ofType: nil),
-              let resourcePath = Bundle.main.resourcePath else {
-            throw NSError(domain: "ExifToolNotFound", code: -1)
+        LogModel.shared.log("🔧 Starting getModel for: \(fileURL.lastPathComponent)")
+        
+        // Get group container URL
+        guard let groupContainer = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: "BenQuinton.ColorForge.group"
+        ) else {
+            LogModel.shared.log("❌ Failed to get group container")
+            throw NSError(domain: "GroupContainerNotFound", code: -1)
         }
         
-        let libPath = "\(resourcePath)/lib"
+        let tempDir = groupContainer.appendingPathComponent("exiftool_temp")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true, attributes: nil)
+        
+        // Create a specific temp directory for this operation
+        let operationTempDir = tempDir.appendingPathComponent("operation_\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: operationTempDir, withIntermediateDirectories: true, attributes: nil)
+        
+        LogModel.shared.log("🔧 Operation temp dir: \(operationTempDir.path)")
+        
+        // Copy exiftool and lib to group container if not already there
+        let groupExifTool = tempDir.appendingPathComponent("exiftool")
+        let groupLib = tempDir.appendingPathComponent("lib")
+        
+        if !FileManager.default.fileExists(atPath: groupExifTool.path) {
+            LogModel.shared.log("🔧 Copying exiftool to group container...")
+            
+            guard let bundleExifTool = Bundle.main.path(forResource: "exiftool", ofType: nil),
+                  let bundleResourcePath = Bundle.main.resourcePath else {
+                LogModel.shared.log("❌ ExifTool not found in bundle")
+                throw NSError(domain: "ExifToolNotFound", code: -1)
+            }
+            
+            // Copy exiftool script
+            try FileManager.default.copyItem(atPath: bundleExifTool, toPath: groupExifTool.path)
+            
+            // Copy lib directory
+            let bundleLib = "\(bundleResourcePath)/lib"
+            try FileManager.default.copyItem(atPath: bundleLib, toPath: groupLib.path)
+            
+            // Make exiftool executable
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: groupExifTool.path)
+            
+            LogModel.shared.log("✅ Successfully copied exiftool to group container")
+        } else {
+            LogModel.shared.log("🔧 ExifTool already exists in group container")
+        }
         
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/perl")
-        process.arguments = ["-I\(libPath)", scriptPath, "-Model", "-s3", fileURL.path]
+        process.arguments = ["-I\(groupLib.path)", groupExifTool.path, "-Model", "-s3", fileURL.path]
+        process.currentDirectoryURL = operationTempDir
+        
+        // Set environment variable to force ExifTool to use our temp directory
+        var environment = ProcessInfo.processInfo.environment
+        environment["TMPDIR"] = operationTempDir.path
+        environment["TEMP"] = operationTempDir.path
+        environment["TMP"] = operationTempDir.path
+        process.environment = environment
+        
+        LogModel.shared.log("🔧 Command: \(process.arguments?.joined(separator: " ") ?? "")")
+        LogModel.shared.log("🔧 TMPDIR set to: \(operationTempDir.path)")
         
         let outputPipe = Pipe()
         let errorPipe = Pipe()
@@ -1010,20 +1140,26 @@ class DataModel: ObservableObject {
         let output = String(data: outputData, encoding: .utf8) ?? ""
         let error = String(data: errorData, encoding: .utf8) ?? ""
         
-        print("🔧 Process exit code: \(process.terminationStatus)")
-        if !output.isEmpty { print("🔧 Output: \(output)") }
-        if !error.isEmpty { print("🔧 Error: \(error)") }
+        LogModel.shared.log("🔧 Exit code: \(process.terminationStatus)")
+        if !output.isEmpty { LogModel.shared.log("🔧 Output: \(output)") }
+        if !error.isEmpty { LogModel.shared.log("🔧 Error: \(error)") }
+        
+        // Clean up operation temp directory
+        try? FileManager.default.removeItem(at: operationTempDir)
         
         if process.terminationStatus != 0 {
+            LogModel.shared.log("❌ getModel failed with exit code: \(process.terminationStatus)")
             throw NSError(domain: "ExifToolError", code: Int(process.terminationStatus))
         }
         
         // Return the trimmed model name, or throw if empty
         let modelName = output.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !modelName.isEmpty else {
+            LogModel.shared.log("❌ Camera model not found in file")
             throw NSError(domain: "ModelNotFound", code: -2, userInfo: [NSLocalizedDescriptionKey: "Camera model not found in file"])
         }
         
+        LogModel.shared.log("✅ Successfully got model: \(modelName)")
         return modelName
     }
     

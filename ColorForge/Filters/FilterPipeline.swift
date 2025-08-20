@@ -680,11 +680,11 @@ class FilterPipeline: ObservableObject {
         
         var result: CIImage
         
-//		if logMode {
-//			result = item.url.asCIImage()
-////			result = result.slogToLin()
-//			result = result.LogC2Lin()
-//		} else {
+		if logMode {
+			result = item.url.asCIImage()
+//			result = result.slogToLin()
+			result = result.LogC2Lin()
+		} else {
 		
 //        if tiffScanMode {
 //            result = item.url.asCIImage()
@@ -700,7 +700,7 @@ class FilterPipeline: ObservableObject {
 				result = input
 			}
 			
-//		}
+		}
         
         
         
@@ -734,7 +734,7 @@ class FilterPipeline: ObservableObject {
             
             if logMode {
                 // Convert to AWG
-                //			result = result.sGamutCineToAWG3()
+                			result = result.sGamutCineToAWG3()
             } else {
                 //			result = result.P3ToAWG()
             }
@@ -1203,13 +1203,16 @@ class FilterPipeline: ObservableObject {
                 convertToNeg: item.convertToNeg
             ).apply(to: result)
             
-            result = AddPaperBlackNode().apply(to: result)
+             result = AddPaperBlackNode().apply(to: result)
         }
 
         
         //        result = TomJamiesonFilter(applyTom: item.applyTom).apply(to: result)
         
 
+//        debugSave(result, "\(item.url.lastPathComponent)")
+        
+        
 		// ****************************************************************** //
 
 //		guard var debugResult = item.debayeredInit else {return nil}
@@ -1384,12 +1387,18 @@ class FilterPipeline: ObservableObject {
         let rect = viewModel.zoomRect
         
         if isZoomed, rect.width > 0, rect.height > 0 {
-            guard let buffer = PixelBufferHRCache.shared.get(item.id) else {
-                print("Failed to unwrap highres")
-                return nil }
-            
-            let highRes = CIImage(cvPixelBuffer: buffer)
-            
+            guard let smlBuffer = PixelBufferCache.shared.get(item.id) else { return nil }
+
+            var highRes = CIImage(cvPixelBuffer: smlBuffer)
+            let scaleUp = viewModel.zoomScale
+            highRes = highRes.transformed(by: CGAffineTransform(scaleX: scaleUp, y: scaleUp))
+
+            if let buffer = PixelBufferHRCache.shared.get(item.id) {
+                // Use HR buffer if available
+                highRes = CIImage(cvPixelBuffer: buffer)
+            }
+            // If no HR buffer, highRes is already the scaled-up small buffer
+
             let clamped = clampedRect(rect, in: highRes.extent)
             let zoomed = highRes.cropped(to: clamped)
             let translated = zoomed.transformed(by: .init(

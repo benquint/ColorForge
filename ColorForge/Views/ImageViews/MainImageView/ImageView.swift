@@ -129,8 +129,11 @@ struct ImageView: View {
             
 
             Task(priority: .utility) {
-//                await debayerFullRes()
+                // Get the high res
                 await dataModel.getHR(item)
+                // Reapply Pipeline with the highres
+                pipeline.applyPipelineV2Sync(id, dataModel)
+                
             }
  
 		}
