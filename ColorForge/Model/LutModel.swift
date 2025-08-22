@@ -88,7 +88,9 @@ class LutModel {
             "2383v2",
             "3513v2",
             "PostPrint",
-            "P400_2025" // For extended range
+            "P400_2025", // For extended range
+            "CF_TO_Print_LAB_Box5_Gaussian5_ADOBE",
+            "CF2PrintV2"
 			
 		]
 		
@@ -274,9 +276,6 @@ class LutModel {
         
         let boundsRect = CGRect(x: 0, y: 0, width: width, height: height)
         
-//        let cubeSpace = CGColorSpace(name: CGColorSpace.extendedLinearDisplayP3)!
-//		let cubeSpace = CGColorSpaceCreateDeviceRGB()
-		let adobeRGBColorSpace = CGColorSpace(name: CGColorSpace.adobeRGB1998)!
 
         // Render CIImage into pixel buffer (avoids clamping!)
         context.render(ciImage, to: buffer, bounds: boundsRect, colorSpace: nil)

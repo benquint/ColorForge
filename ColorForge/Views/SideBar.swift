@@ -231,6 +231,27 @@ struct SidebarView: View {
                         .padding(10)
                         
                         
+                        VStack {
+                            Button(action: {
+                                saveLut()
+                                
+                            }) {
+                                Image(systemName: "cube")
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .foregroundColor(Color("SideBarText"))
+                                    .padding(5)
+                                    .frame(width: 40, height: 40)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            
+                            Text("LUT")
+                                .font(.caption)
+                                .foregroundColor(selectedView == .export ? Color("IconActive") : Color("SideBarText"))
+                        }
+                        .padding(10)
+                        
+                        
                         Spacer()
                             .frame(width: 20)
                     }
@@ -418,6 +439,47 @@ struct SidebarView: View {
         
         
         
+    }
+    
+    
+    // MARK: - Save LUT
+    
+    private func saveLut() {
+        let lutModel = LutModel.shared
+        
+        guard let id = viewModel.currentImgID else { return }
+        guard let item = dataModel.items.first(where: { $0.id == id }) else { return }
+        
+        Task {
+            
+            if let cms = await lutModel.generateFloatCubeImageAsync(size: 64) {
+                
+                var linearCMS = cms.slogToLin()
+                linearCMS = linearCMS.sphGamutMap()
+                guard let lineariseData = lutModel.readCubeData(from: linearCMS, size: 64) else {return}
+                
+                
+                if let cmsApplied = pipeline.applyPipelineV2Sync(id, dataModel, cms, false, true) {
+                    
+                    if let cubeData =  lutModel.readCubeData(from: cmsApplied, size: 64) {
+                        
+                        
+                        
+                        var finalCMS = cms.applyLutData(lineariseData)
+                        finalCMS = finalCMS.applyLutData(cubeData)
+                        guard let finalData = lutModel.readCubeData(from: finalCMS, size: 64) else {return}
+                        
+                        lutModel.saveCubeDataAsCubeFile(cubeData, "ColorForgeLUT_\(item.url.lastPathComponent)")
+                        lutModel.saveCubeDataAsCubeFile(lineariseData, "SlogLinear")
+                        
+                        pipeline.applyPipelineV2Sync(id, dataModel)
+                        
+                    }
+                }
+                
+            }
+            
+        }
     }
     
     

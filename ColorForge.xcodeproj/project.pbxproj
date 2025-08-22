@@ -67,6 +67,7 @@
 		84EA52922E4F43C700750988 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		84EA52A82E4F6AEA00750988 /* MetalKernelsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MetalKernelsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		84EA52D72E4F700F00750988 /* CIKernels.metallib */ = {isa = PBXFileReference; explicitFileType = "archive.metal-library"; includeInIndex = 0; path = CIKernels.metallib; sourceTree = BUILT_PRODUCTS_DIR; };
+		984F6B2D2E5851D000A9E1CD /* Pipeline.metallib */ = {isa = PBXFileReference; explicitFileType = "archive.metal-library"; includeInIndex = 0; path = Pipeline.metallib; sourceTree = BUILT_PRODUCTS_DIR; };
 		987BF2492DDDECC7005EF497 /* ColorForge.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ColorForge.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		98D9BFA02E53278500E0DB71 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; name = lib; path = ColorForge/Helpers/lib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -91,6 +92,11 @@
 		84CA78A02E0B031100225A6D /* Exceptions for "ColorForge" folder in "ColorForge" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Filters/Metal/Gamma.metal,
+				Filters/Metal/Helpers.metal,
+				Filters/Metal/Pipeline.metal,
+				Filters/Metal/RawAdjust.metal,
+				Filters/Metal/Texture.metal,
 				Filters/Nodes/LoadingModel.swift,
 				Filters/Nodes/ToAdapt.swift,
 				Helpers/lib/File/RandomAccess.pm,
@@ -335,7 +341,6 @@
 				Helpers/lib/Image/ExifTool/ZIP.pm,
 				Helpers/lib/Image/ExifTool/ZISRAW.pm,
 				Info.plist,
-				"Views/BottomBarView 2.swift",
 				Views/ImageViews/MainImageView/ImageViewSAM.swift,
 				Views/Masking/MaskIcons.swift,
 				Views/SidebarViewOld.swift,
@@ -353,6 +358,11 @@
 		84EA52D82E4F700F00750988 /* CIKernels */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = CIKernels;
+			sourceTree = "<group>";
+		};
+		984F6B2E2E5851D000A9E1CD /* Pipeline */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Pipeline;
 			sourceTree = "<group>";
 		};
 		987BF24B2DDDECC7005EF497 /* ColorForge */ = {
@@ -425,6 +435,7 @@
 				987BF24B2DDDECC7005EF497 /* ColorForge */,
 				848157B72E3A212E003965FA /* sam2-cli */,
 				84EA52D82E4F700F00750988 /* CIKernels */,
+				984F6B2E2E5851D000A9E1CD /* Pipeline */,
 				848157CA2E3A3E8B003965FA /* Frameworks */,
 				987BF24A2DDDECC7005EF497 /* Products */,
 			);
@@ -437,6 +448,7 @@
 				848157B62E3A212E003965FA /* sam2-cli */,
 				84EA52A82E4F6AEA00750988 /* MetalKernelsTests.xctest */,
 				84EA52D72E4F700F00750988 /* CIKernels.metallib */,
+				984F6B2D2E5851D000A9E1CD /* Pipeline.metallib */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -507,6 +519,26 @@
 			productReference = 84EA52D72E4F700F00750988 /* CIKernels.metallib */;
 			productType = "com.apple.product-type.metal-library";
 		};
+		984F6B2C2E5851D000A9E1CD /* Pipeline */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 984F6B332E5851D000A9E1CD /* Build configuration list for PBXNativeTarget "Pipeline" */;
+			buildPhases = (
+				984F6B2B2E5851D000A9E1CD /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				984F6B2E2E5851D000A9E1CD /* Pipeline */,
+			);
+			name = Pipeline;
+			packageProductDependencies = (
+			);
+			productName = Pipeline;
+			productReference = 984F6B2D2E5851D000A9E1CD /* Pipeline.metallib */;
+			productType = "com.apple.product-type.metal-library";
+		};
 		987BF2482DDDECC7005EF497 /* ColorForge */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 987BF26B2DDDECC9005EF497 /* Build configuration list for PBXNativeTarget "ColorForge" */;
@@ -553,6 +585,9 @@
 					84EA52D62E4F700F00750988 = {
 						CreatedOnToolsVersion = 16.2;
 					};
+					984F6B2C2E5851D000A9E1CD = {
+						CreatedOnToolsVersion = 16.4;
+					};
 					987BF2482DDDECC7005EF497 = {
 						CreatedOnToolsVersion = 16.3;
 						LastSwiftMigration = 1620;
@@ -582,6 +617,7 @@
 				848157B52E3A212E003965FA /* sam2-cli */,
 				84EA52A72E4F6AEA00750988 /* MetalKernelsTests */,
 				84EA52D62E4F700F00750988 /* CIKernels */,
+				984F6B2C2E5851D000A9E1CD /* Pipeline */,
 			);
 		};
 /* End PBXProject section */
@@ -621,6 +657,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		84EA52D52E4F700F00750988 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		984F6B2B2E5851D000A9E1CD /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -712,6 +755,7 @@
 				MTLLINKER_FLAGS = "-fcikernel";
 				MTL_COMPILER_FLAGS = "-fcikernel";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SYMROOT = "/Users/benquinton/Dropbox/App Dev/ColorForge2025/ColorForge2025/ColorForge/ColorForge";
 				VERSIONING_SYSTEM = "";
 			};
 			name = Debug;
@@ -724,6 +768,29 @@
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
 				MTLLINKER_FLAGS = "-fcikernel";
 				MTL_COMPILER_FLAGS = "-fcikernel";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SYMROOT = "/Users/benquinton/Dropbox/App Dev/ColorForge2025/ColorForge2025/ColorForge/ColorForge";
+				VERSIONING_SYSTEM = "";
+			};
+			name = Release;
+		};
+		984F6B312E5851D000A9E1CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = MH3K548CJL;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				VERSIONING_SYSTEM = "";
+			};
+			name = Debug;
+		};
+		984F6B322E5851D000A9E1CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = MH3K548CJL;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				VERSIONING_SYSTEM = "";
 			};
@@ -966,6 +1033,15 @@
 			buildConfigurations = (
 				84EA52DC2E4F700F00750988 /* Debug */,
 				84EA52DD2E4F700F00750988 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		984F6B332E5851D000A9E1CD /* Build configuration list for PBXNativeTarget "Pipeline" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				984F6B312E5851D000A9E1CD /* Debug */,
+				984F6B322E5851D000A9E1CD /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

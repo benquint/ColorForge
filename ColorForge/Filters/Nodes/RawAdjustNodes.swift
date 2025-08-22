@@ -344,8 +344,8 @@ struct HueSaturationDensityNode: FilterNode {
     let yellowDen: Float
     
     func apply(to input: CIImage) -> CIImage {
-        let hueScalar: Float = 0.000833
         
+        let hueScalar: Float = 0.000833
         
         let kernel = CIColorKernelCache.shared.hsdKernel
         let sphericalInput = input.clampedToExtent()

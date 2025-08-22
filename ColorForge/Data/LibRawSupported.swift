@@ -446,6 +446,7 @@ struct LibRawSupported {
     let GFX_100: String = "GFX100"
     let GFX_100S: String = "GFX100S"
     let GFX_100SII: String = "GFX100S II" // Hacked
+    let GFX_100II: String = "GFX100 II" // Hacked
     let X_Pro1: String = "X-Pro1"
     let X_Pro2: String = "X-Pro2"
     let X_Pro3: String = "X-Pro3"

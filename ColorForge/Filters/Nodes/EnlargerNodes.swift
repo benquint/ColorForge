@@ -438,14 +438,14 @@ struct PrintGamutNode: FilterNode {
                     let multiplied = input.multiply(flash)
                     let result = multiplied.applyLutColorSpace(resourceName)
                     
-//                    let modified = result.applyLutColorSpace("PostPrint")
+                    let modified = result.applyLutColorSpace("PostPrint")
                     
-                    return result.cropped(to: input.extent)
+                    return modified.cropped(to: input.extent)
                 } else {
                     let outputImage = input.applyLutColorSpace(resourceName)
-//                    let modified = outputImage.applyLutColorSpace("PostPrint")
+                    let modified = outputImage.applyLut("CF2PrintV2")
                     
-                    return outputImage.cropped(to: input.extent)
+                    return modified.cropped(to: input.extent)
                 }
             }
         } else {
@@ -463,8 +463,13 @@ struct PrintGamutNode: FilterNode {
                     return result.cropped(to: input.extent)
                 } else {
                     let outputImage = input.applyLutColorSpace(resourceName)
-//                    let modified = outputImage.applyLutColorSpace("PostPrint")
-                    return outputImage.cropped(to: input.extent)
+                    let modified = outputImage.applyLutColorSpace("PostPrint")
+//                    let modified = outputImage.applyLutColorSpace("CF_TO_Print_LAB_Box5_Gaussian5_ADOBE")
+//                    let modified = outputImage.applyLut("CF2PrintV2")
+                    
+                    let result = outputImage.blendWithOpacityPercent(modified, 50)
+                    
+                    return result.cropped(to: input.extent)
                 }
             }
         }
@@ -702,15 +707,21 @@ struct PaperNode: FilterNode {
 }
 
 struct AddPaperBlackNode: FilterNode {
-	
+    let apply: Bool
 	
 	func apply(to input: CIImage) -> CIImage {
+        
+        guard apply else {return input}
+        
 		let paperBlack = input.scalePaperBlack()
 		let added = input.add(paperBlack)
 		let blend = input.blendWithOpacityPercent(added, 40)
+        
+        let paperColor = CIImage(color: CIColor(red: 0.958, green: 0.959, blue: 0.959, alpha: 1.0)).cropped(to: input.extent)
+        
+        let finalBlend = blend.multiply(paperColor)
 		
-		
-		return blend.cropped(to: input.extent)
+		return finalBlend.cropped(to: input.extent)
 	}
 }
 

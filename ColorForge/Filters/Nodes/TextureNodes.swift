@@ -426,7 +426,9 @@ struct NoiseGrainNode: FilterNode {
 		
 		plate = plate.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
 		
-		let result = input.arriSoftLight(plate)
+		let blended = input.arriSoftLight(plate)
+        
+        let result = input.blendWithOpacityPercent(blended, 50)
         
         return result.cropped(to: input.extent)
 //		return input

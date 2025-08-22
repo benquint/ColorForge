@@ -174,15 +174,16 @@ class DataModel: ObservableObject {
     @discardableResult
     func getHR(_ item: ImageItem) async -> CIImage? {
 
-        let tiff = item.tiffDict
+        
 //        let cameraModel = tiff?[kCGImagePropertyTIFFModel] as? String ?? "Unknown"
         let cameraModel = try? await getModel(item)
         try? await Task.sleep(nanoseconds: 10_000_000)
         
         let originalModel = cameraModel
         
-        if cameraModel == "GFX100S II" {
-            try? await modifyRAWModel(item, "GFX100S")
+        if let cameraModel = cameraModel,
+           let targetModel = CameraModelMapper.getTargetModel(for: cameraModel) {
+            try? await modifyRAWModel(item, targetModel)
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
         
@@ -226,7 +227,7 @@ class DataModel: ObservableObject {
         
         fullRes = fullRes.denoise(noiseVal, sharpenVal)
         
-        fullRes = fullRes.LogC2Lin()
+//        fullRes = fullRes.LogC2Lin()
         
         
         
@@ -241,8 +242,10 @@ class DataModel: ObservableObject {
         await PixelBufferHRCache.shared.set(fullResBuffer, for: item.id)
         
         
-        if originalModel == "GFX100S II" {
-            try? await modifyRAWModel(item, "GFX100S II")
+        // Later, restore the original model
+        if let original = originalModel,
+           CameraModelMapper.needsModelChange(for: original) {
+            try? await modifyRAWModel(item, original)
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
         
@@ -259,8 +262,10 @@ class DataModel: ObservableObject {
         
         let originalModel = cameraModel
         
-        if cameraModel == "GFX100S II" {
-            try? await modifyRAWModel(item, "GFX100S")
+        // Change to target model if needed
+        if let model = cameraModel,
+           let targetModel = CameraModelMapper.getTargetModel(for: model) {
+            try? await modifyRAWModel(item, targetModel)
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
         
@@ -299,7 +304,7 @@ class DataModel: ObservableObject {
             display = display.oriented(.up)
         }
         
-        display = display.LogC2Lin()
+//        display = display.LogC2Lin()
         
         let scale = CGFloat(item.uiScale)
         
@@ -315,8 +320,9 @@ class DataModel: ObservableObject {
         
         await PixelBufferCache.shared.set(displayBuffer, for: item.id)
         
-        if originalModel == "GFX100S II" {
-            try? await modifyRAWModel(item, "GFX100S II")
+        if let original = originalModel,
+           CameraModelMapper.needsModelChange(for: original) {
+            try? await modifyRAWModel(item, original)
             try? await Task.sleep(nanoseconds: 10_000_000)
         }
         
@@ -504,8 +510,9 @@ class DataModel: ObservableObject {
                
                let originalModel = cameraModel
                
-               if cameraModel == "GFX100S II" {
-                   try? await modifyRAWModel(item, "GFX100S")
+               // Modify the model for those not supported
+               if let targetModel = CameraModelMapper.getTargetModel(for: cameraModel) {
+                   try? await modifyRAWModel(item, targetModel)
                    try? await Task.sleep(nanoseconds: 10_000_000)
                }
                
@@ -559,7 +566,7 @@ class DataModel: ObservableObject {
                var scaled = fullRes.transformed(by: CGAffineTransform(scaleX: CGFloat(scale), y: CGFloat(scale)))
                
                
-               scaled = scaled.LogC2Lin()
+//               scaled = scaled.LogC2Lin()
                
                guard let scaledBuffer = scaled.convertDebayeredToBufferSync() else {
                    print("Scaled buffer creation failed for \(item.url.lastPathComponent)")
@@ -667,8 +674,9 @@ class DataModel: ObservableObject {
                }
 
                
-               if originalModel == "GFX100S II" {
-                   try? await modifyRAWModel(item, "GFX100S II")
+               // Later, restore the original model
+               if CameraModelMapper.needsModelChange(for: originalModel) {
+                   try? await modifyRAWModel(item, originalModel)
                    try? await Task.sleep(nanoseconds: 10_000_000)
                }
            }

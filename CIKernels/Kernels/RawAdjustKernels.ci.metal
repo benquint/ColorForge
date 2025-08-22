@@ -248,8 +248,33 @@ extern "C" {
 
 		return float4(logC, s.a);
 	}
+    
+    
 	
-	
+	// MARK: - GamutMapping SPH
+    
+    inline float tone_map(float x, float a, float b, float c) {
+        return a * (x / (x + b)) + c;
+    }
+    
+    float4 sphGamutMap(coreimage::sample_t s) {
+        float3 rgb = s.rgb;
+        float3 sph = rgbToSphericalFloat3(rgb);
+        
+        float c = 0.0;
+        float a = 1.0 - c;
+        float b = (a / (0.18 - c)) * (1.0 - (0.18 - c) / a) * 0.18;
+        
+        float gamutMapped = tone_map(sph.z, a, b, c);
+        float mask = clamp(sph.x * 2.0, 0.0, 1.0);
+        
+        
+        sph.z = mix(sph.z, gamutMapped, mask);
+        
+        rgb = sphericalToRgbFloat3(sph);
+        
+        return float4(rgb, 1.0);
+    }
 	
 	//MARK: - HSD Kernels (spherical coords)
 	

@@ -11,6 +11,9 @@ import CoreImage
 // Global class
 public final class CIColorKernelCache {
 	public static let shared = CIColorKernelCache()
+    
+    // Gamut mapping
+    let sphGamutMap: CIColorKernel
 
 	// RawAdjust
 	let encodeSensor: CIColorKernel 
@@ -166,6 +169,9 @@ public final class CIColorKernelCache {
 			}
 			return kernel
 		}
+        
+        // Gamut Map
+        self.sphGamutMap = load("sphGamutMap")
 
 		// Raw Adjust
 		self.encodeSensor = load("encodeSensor")

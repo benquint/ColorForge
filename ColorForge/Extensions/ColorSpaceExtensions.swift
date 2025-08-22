@@ -285,6 +285,15 @@ extension CIImage {
 		) ?? self
 	}
 	
+    
+    func sphGamutMap() -> CIImage {
+        let kernel = CIColorKernelCache.shared.sphGamutMap
+        return kernel.apply(
+            extent: self.extent,
+            roiCallback: {$1},
+            arguments: [self]
+        ) ?? self
+    }
 	
 	// MARK: - Gamma Extensions
 	

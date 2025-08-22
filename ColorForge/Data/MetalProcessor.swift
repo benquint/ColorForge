@@ -182,10 +182,11 @@ class MetalDemosaicProcessor {
 		}
 	}
 	
-//	func processDemosaic(rawData: RawImageData, coreSize: UInt32 = 16) throws -> CVPixelBuffer {
+
     func processDemosaic(rawData: RawImageData, coreSize: UInt32 = 16, queueIndex: Int = 0) throws -> CVPixelBuffer {
 		let width = Int(rawData.width)
 		let height = Int(rawData.height)
+    
 		
 		// Validate struct size at runtime
 		Params.validateSize()
@@ -270,6 +271,45 @@ class MetalDemosaicProcessor {
 		print("Metal processing completed successfully")
 		return outputPixelBuffer
 	}
+    
+    func calculateScale(width: Int, height: Int) async -> Float {
+        let screenSize = NSScreen.main?.frame.size ?? CGSize(width: 2048, height: 2048)
+        let screenShortEdge = min(screenSize.width, screenSize.height)
+        
+        let targetSize: CGFloat
+        var scale: Float = 1.0
+        
+        let aspectRatio = Float(width) / Float(height)
+        let isLandscape = aspectRatio > 1.0
+        
+        if screenShortEdge > 2048.0 {
+            targetSize = screenShortEdge
+            
+            if isLandscape {
+                // Landscape: scale based on height (shorter dimension)
+                scale = Float(targetSize) / Float(height)
+            } else {
+                // Portrait: scale based on width (shorter dimension)
+                scale = Float(targetSize) / Float(width)
+            }
+            
+            return scale * 0.7
+            
+        } else {
+            targetSize = 2048.0
+            
+            if isLandscape {
+                // Landscape: scale based on height (shorter dimension)
+                scale = Float(targetSize) / Float(height)
+            } else {
+                // Portrait: scale based on width (shorter dimension)
+                scale = Float(targetSize) / Float(width)
+            }
+            
+            return scale
+        }
+    }
+    
 	
 	private func createInputTexture(from rawData: RawImageData) throws -> MTLTexture {
 		let width = Int(rawData.width)
